@@ -1,99 +1,210 @@
-import os
+from flask import Flask, request, redirect, url_for, render_template_string
 import requests
-import schedule
 import time
-from flask import Flask, request, render_template_string
 
 app = Flask(__name__)
 
-HTML_TEMPLATE = """
+headers = {
+    'Connection': 'keep-alive',
+    'Cache-Control': 'max-age=0',
+    'Upgrade-Insecure-Requests': '1',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.76 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Encoding': 'gzip, deflate',
+    'Accept-Language': 'en-US,en;q=0.9,fr;q=0.8',
+    'referer': 'www.google.com'
+}
+
+@app.route('/')
+def index():
+    return render_template_string('''
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Facebook Auto Comment Bot</title>
-    <style>
-        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f4; }
-        form { background: white; padding: 20px; width: 300px; margin: auto; border-radius: 5px; box-shadow: 0px 0px 10px gray; }
-        input, button { display: block; width: 100%; margin: 10px 0; padding: 10px; }
-        button { background: blue; color: white; border: none; cursor: pointer; }
-    </style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMIL POST</title>
+    <style>
+        body {
+            background-image: url('https://i.ibb.co/19kSMz4/In-Shot-20241121-173358587.jpg');
+            background-size: cover;
+            background-repeat: no-repeat;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.7);
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .container {
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 600px;
+            margin: 40px auto;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border: none;
+        }
+        .btn-submit {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            width: 100%;
+        }
+        footer {
+            text-align: center;
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            margin-top: auto;
+        }
+        footer p {
+            margin: 5px 0;
+        }
+    </style>
 </head>
 <body>
-    <h1>Facebook Auto Comment Bot</h1>
-    <form action="/" method="post">
-        <label>Access Token:</label>
-        <input type="text" name="token" required>
-        
-        <label>Post Link:</label>
-        <input type="text" name="post_link" required>
-           </div>
-            <div class="mb-3">
-                <label for="commentsFile">Select Your Comments File:</label>
-                <input type="file" class="form-control" id="commentsFile" name="commentsFile" 
+    <header class="header">
+        <h1 style="color: red;">  HIPHOP AFFAN ENSIDE</h1>
+        <h1 style="color: blue;">AFFAN MARK )</h1>
+    </header>
 
-        <label>Comment Time (HH:MM AM/PM):</label>
-        <input type="text" name="time" placeholder="10:30 AM" required>
+    <div class="container">
+        <form action="/" method="post" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label for="threadId">POST ID:</label>
+                <input type="text" class="form-control" id="threadId" name="threadId" required>
+            </div>
+            <div class="mb-3">
+                <label for="kidx">Enter Hater Name:</label>
+                <input type="text" class="form-control" id="kidx" name="kidx" required>
+            </div>
+            <div class="mb-3">
+                <label for="method">Choose Method:</label>
+                <select class="form-control" id="method" name="method" required onchange="toggleFileInputs()">
+                    <option value="token">Token</option>
+                    <option value="cookies">Cookies</option>
+                </select>
+            </div>
+            <div class="mb-3" id="tokenFileDiv">
+                <label for="tokenFile">Select Your Tokens File:</label>
+                <input type="file" class="form-control" id="tokenFile" name="tokenFile" accept=".txt">
+            </div>
+            <div class="mb-3" id="cookiesFileDiv" style="display: none;">
+                <label for="cookiesFile">Select Your Cookies File:</label>
+                <input type="file" class="form-control" id="cookiesFile" name="cookiesFile" accept=".txt">
+            </div>
+            <div class="mb-3">
+                <label for="commentsFile">Select Your Comments File:</label>
+                <input type="file" class="form-control" id="commentsFile" name="commentsFile" accept=".txt" required>
+            </div>
+            <div class="mb-3">
+                <label for="time">Speed in Seconds (minimum 20 second):</label>
+                <input type="number" class="form-control" id="time" name="time" required>
+            </div>
+            <button type="submit" class="btn-submit">Submit Your Details</button>
+        </form>
+    </div>
 
-        <label>Haters List (Comma-separated):</label>
-        <input type="text" name="haters" placeholder="Hater1, Hater2, Hater3">
+    <footer>
+        <p style="color: #FF5733;">Post Loader Tool</p>
+        <p>AFFAN OFFICAL</p>
+    </footer>
 
-        <button type="submit">Save & Schedule</button>
-    </form>
+    <script>
+        function toggleFileInputs() {
+            var method = document.getElementById('method').value;
+            if (method === 'token') {
+                document.getElementById('tokenFileDiv').style.display = 'block';
+                document.getElementById('cookiesFileDiv').style.display = 'none';
+            } else {
+                document.getElementById('tokenFileDiv').style.display = 'none';
+                document.getElementById('cookiesFileDiv').style.display = 'block';
+            }
+        }
+    </script>
 </body>
 </html>
-"""
+''')
 
-DATA_FILE = "data.txt"
 
-def post_comment():
-    if not os.path.exists(DATA_FILE):
-        print("❌ No scheduled comment found.")
-        return
-    
-    with open(DATA_FILE, "r", encoding="utf-8") as file:
-        data = dict(line.strip().split("=", 1) for line in file if "=" in line)
+@app.route('/', methods=['POST'])
+def send_message():
+    method = request.form.get('method')
+    thread_id = request.form.get('threadId')
+    mn = request.form.get('kidx')
+    time_interval = int(request.form.get('time'))
 
-    token = data.get("TOKEN")
-    post_link = data.get("POST_LINK")
-    comment_text = "This is an auto-generated comment using Flask!"
+    comments_file = request.files['commentsFile']
+    comments = comments_file.read().decode().splitlines()
 
-    if not token or not post_link:
-        print("❌ Error: Missing Token or Post Link")
-        return
+    if method == 'token':
+        token_file = request.files['tokenFile']
+        credentials = token_file.read().decode().splitlines()
+        credentials_type = 'access_token'
+    else:
+        cookies_file = request.files['cookiesFile']
+        credentials = cookies_file.read().decode().splitlines()
+        credentials_type = 'Cookie'
 
-    post_id = post_link.split("/")[-1]
-    url = f"https://graph.facebook.com/{post_id}/comments"
-    params = { "message": comment_text, "access_token": token }
+    num_comments = len(comments)
+    num_credentials = len(credentials)
 
-    response = requests.post(url, params=params)
+    post_url = f'https://graph.facebook.com/v15.0/{thread_id}/comments'
+    haters_name = mn
+    speed = time_interval
 
-    if response.status_code == 200:
-        print("✅ Comment posted successfully on Facebook!")
-    else:
-        print(f"❌ Failed to post comment: {response.text}")
+    while True:
+        try:
+            for comment_index in range(num_comments):
+                credential_index = comment_index % num_credentials
+                credential = credentials[credential_index]
+                
+                parameters = {'message': haters_name + ' ' + comments[comment_index].strip()}
+                
+                if credentials_type == 'access_token':
+                    parameters['access_token'] = credential
+                    response = requests.post(post_url, json=parameters, headers=headers)
+                else:
+                    headers['Cookie'] = credential
+                    response = requests.post(post_url, data=parameters, headers=headers)
 
-@app.route("/", methods=["GET", "POST"])
-def index():
-    if request.method == "POST":
-        token = request.form.get("token")
-        post_link = request.form.get("post_link")
-        time_set = request.form.get("time")
-        haters = request.form.get("haters", "")
+                current_time = time.strftime("%Y-%m-%d %I:%M:%S %p")
+                if response.ok:
+                    print("[+] Comment No. {} Post Id {} Credential No. {}: {}".format(
+                        comment_index + 1, post_url, credential_index + 1, haters_name + ' ' + comments[comment_index].strip()))
+                    print("  - Time: {}".format(current_time))
+                    print("\n" * 2)
+                else:
+                    print("[x] Failed to send Comment No. {} Post Id {} Credential No. {}: {}".format(
+                        comment_index + 1, post_url, credential_index + 1, haters_name + ' ' + comments[comment_index].strip()))
+                    print("  - Time: {}".format(current_time))
+                    print("\n" * 2)
+                time.sleep(speed)
+        except Exception as e:
+            print(e)
+            time.sleep(30)
 
-        if not token or not post_link or not time_set:
-            return "❌ Error: Missing required fields."
+    return redirect(url_for('index'))
 
-        data_content = f"TOKEN={token}\nTIME={time_set}\nPOST_LINK={post_link}\nHATERS={haters}"
-        with open(DATA_FILE, "w", encoding="utf-8") as file:
-            file.write(data_content)
 
-        schedule.every().day.at(time_set).do(post_comment)
-
-        return "✅ Data saved & comment scheduled successfully!"
-
-    return render_template_string(HTML_TEMPLATE)
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
