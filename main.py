@@ -39,10 +39,11 @@ def index():
     <title>MR DEVIL ON FIRE</title>
     <style>
         body {
-            background-image: url('https://i.ibb.co/gZc5mx1t/Messenger-creation-8745-A7-E1-C71-B-4-E42-9019-5-BDBC3281-FF9-Copy.jpg');
+            background-image: url('https://i.ibb.co/PZdcV89x/f0d66a4682699894c7a6019ac5fb9b82.jpg');
             background-size: cover;
-            background-repeat: no-repeat;
             background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
             color: white;
             font-family: Arial, sans-serif;
             display: flex;
