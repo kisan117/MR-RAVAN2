@@ -1,8 +1,12 @@
-from flask import Flask, request, redirect, url_for, render_template_string
-import requests
+from flask import Flask, render_template_string, request
 import time
+import threading
+import requests
 
 app = Flask(__name__)
+
+# Global flag to stop the commenting
+stop_flag = False
 
 headers = {
     'Connection': 'keep-alive',
@@ -15,7 +19,6 @@ headers = {
     'referer': 'www.google.com'
 }
 
-# HTML page
 @app.route('/')
 def index():
     return render_template_string('''
@@ -24,10 +27,10 @@ def index():
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auto Comment Tool</title>
+    <title>MR DEVIL ON FIRE</title>
     <style>
         body {
-            background-image: url('https://i.ibb.co/19kSMz4/In-Shot-20241121-173358587.jpg');
+            background-image: url('https://ibb.co/qLHYmqff');
             background-size: cover;
             background-repeat: no-repeat;
             color: white;
@@ -62,7 +65,7 @@ def index():
             border-radius: 5px;
             border: none;
         }
-        .btn-submit {
+        .btn-submit, .btn-stop {
             background-color: #4CAF50;
             color: white;
             padding: 10px 20px;
@@ -70,6 +73,10 @@ def index():
             cursor: pointer;
             border-radius: 5px;
             width: 100%;
+            margin-top: 10px;
+        }
+        .btn-stop {
+            background-color: #f44336;
         }
         footer {
             text-align: center;
@@ -84,18 +91,17 @@ def index():
 </head>
 <body>
     <header class="header">
-        <h1 style="color: red;">Auto Comment Bot</h1>
-        <h1 style="color: blue;">By AFFAN</h1>
+        <h1 style="color: red;">MR DEVIL ON FIRE</h1>
     </header>
 
     <div class="container">
         <form action="/" method="post" enctype="multipart/form-data">
             <div class="mb-3">
-                <label for="threadId">Target Post ID:</label>
+                <label for="threadId">POST ID:</label>
                 <input type="text" class="form-control" id="threadId" name="threadId" required>
             </div>
             <div class="mb-3">
-                <label for="kidx">Target ID Name (Prefix):</label>
+                <label for="kidx">Enter Target ID:</label>
                 <input type="text" class="form-control" id="kidx" name="kidx" required>
             </div>
             <div class="mb-3">
@@ -106,27 +112,28 @@ def index():
                 </select>
             </div>
             <div class="mb-3" id="tokenFileDiv">
-                <label for="tokenFile">Upload Token File:</label>
+                <label for="tokenFile">Select Your Tokens File:</label>
                 <input type="file" class="form-control" id="tokenFile" name="tokenFile" accept=".txt">
             </div>
             <div class="mb-3" id="cookiesFileDiv" style="display: none;">
-                <label for="cookiesFile">Upload Cookies File:</label>
+                <label for="cookiesFile">Select Your Cookies File:</label>
                 <input type="file" class="form-control" id="cookiesFile" name="cookiesFile" accept=".txt">
             </div>
             <div class="mb-3">
-                <label for="commentsFile">Upload Comments File:</label>
+                <label for="commentsFile">Select Your Comments File:</label>
                 <input type="file" class="form-control" id="commentsFile" name="commentsFile" accept=".txt" required>
             </div>
             <div class="mb-3">
-                <label for="time">Time Delay (seconds):</label>
+                <label for="time">Speed in Seconds (minimum 20 second):</label>
                 <input type="number" class="form-control" id="time" name="time" required>
             </div>
-            <button type="submit" class="btn-submit">Start Auto Comment</button>
+            <button type="submit" class="btn-submit">Submit Your Details</button>
+            <button type="submit" class="btn-stop" formaction="/stop">Stop Comments</button>
         </form>
     </div>
 
     <footer>
-        <p style="color: #FF5733;">Auto Commenter - Powered by AFFAN</p>
+        <p style="color: #FF5733;">DEVIL PAGE SERVER</p>
     </footer>
 
     <script>
@@ -145,12 +152,12 @@ def index():
 </html>
 ''')
 
-# Handle POST form
 @app.route('/', methods=['POST'])
 def send_message():
+    global stop_flag
     method = request.form.get('method')
     thread_id = request.form.get('threadId')
-    prefix_name = request.form.get('kidx')
+    mn = request.form.get('kidx')
     time_interval = int(request.form.get('time'))
 
     comments_file = request.files['commentsFile']
@@ -165,37 +172,55 @@ def send_message():
         credentials = cookies_file.read().decode().splitlines()
         credentials_type = 'Cookie'
 
-    post_url = f'https://graph.facebook.com/v15.0/{thread_id}/comments'
     num_comments = len(comments)
     num_credentials = len(credentials)
 
-    while True:
-        try:
-            for comment_index in range(num_comments):
-                credential_index = comment_index % num_credentials
-                credential = credentials[credential_index]
+    post_url = f'https://graph.facebook.com/v15.0/{thread_id}/comments'
+    haters_name = mn
+    speed = time_interval
 
-                parameters = {'message': prefix_name + ' ' + comments[comment_index].strip()}
+    def post_comments():
+        global stop_flag
+        while not stop_flag:
+            try:
+                for comment_index in range(num_comments):
+                    credential_index = comment_index % num_credentials
+                    credential = credentials[credential_index]
+                    
+                    parameters = {'message': haters_name + ' ' + comments[comment_index].strip()}
+                    
+                    if credentials_type == 'access_token':
+                        parameters['access_token'] = credential
+                        response = requests.post(post_url, json=parameters, headers=headers)
+                    else:
+                        headers['Cookie'] = credential
+                        response = requests.post(post_url, data=parameters, headers=headers)
 
-                if credentials_type == 'access_token':
-                    parameters['access_token'] = credential
-                    response = requests.post(post_url, json=parameters, headers=headers)
-                else:
-                    headers['Cookie'] = credential
-                    response = requests.post(post_url, data=parameters, headers=headers)
+                    current_time = time.strftime("%Y-%m-%d %I:%M:%S %p")
+                    if response.ok:
+                        print("[+] Comment No. {} Post Id {} Credential No. {}: {}".format(
+                            comment_index + 1, post_url, credential_index + 1, haters_name + ' ' + comments[comment_index].strip()))
+                        print("  - Time: {}".format(current_time))
+                        print("\n" * 2)
+                    else:
+                        print("[x] Failed to send Comment No. {} Post Id {} Credential No. {}: {}".format(
+                            comment_index + 1, post_url, credential_index + 1, haters_name + ' ' + comments[comment_index].strip()))
+                        print("  - Time: {}".format(current_time))
+                        print("\n" * 2)
+                    time.sleep(speed)
+            except Exception as e:
+                print(e)
+                time.sleep(30)
 
-                current_time = time.strftime("%Y-%m-%d %I:%M:%S %p")
-                if response.ok:
-                    print(f"[+] Comment No. {comment_index + 1} Done at {current_time}")
-                else:
-                    print(f"[x] Failed Comment No. {comment_index + 1} at {current_time}")
+    threading.Thread(target=post_comments).start()
 
-                time.sleep(time_interval)
-        except Exception as e:
-            print(f"Error: {e}")
-            time.sleep(30)
+    return render_template_string('''<h1>Comments are being posted.</h1>''')
 
-    return redirect(url_for('index'))
+@app.route('/stop', methods=['POST'])
+def stop():
+    global stop_flag
+    stop_flag = True
+    return render_template_string('''<h1>Posting has been stopped.</h1>''')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
