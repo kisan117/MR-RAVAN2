@@ -60,7 +60,7 @@ def index():
         if 'commentsFile' in request.files:
             comments = request.files['commentsFile']
             if comments.filename != '':
-           comments_file = comments.filename
+                comments_file = comments.filename
                 comments.save(os.path.join(UPLOAD_FOLDER, comments_file))
 
         # Auto comment start in background
