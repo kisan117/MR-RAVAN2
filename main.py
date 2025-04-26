@@ -1,12 +1,24 @@
 from flask import Flask, render_template_string, request
 import threading
 import time
-import random
 
 app = Flask(__name__)
 
 auto_commenting = False
 comment_thread = None
+
+# Auto Comment function
+def auto_comment(thread_id, haters_name, comments, time_value):
+    global auto_commenting
+    idx = 0
+    while auto_commenting:
+        if idx >= len(comments):
+            idx = 0
+        comment = comments[idx].replace("{hater}", haters_name)
+        print(f"Posting comment on {thread_id}: {comment}")
+        idx += 1
+        time.sleep(max(time_value, 20))  # Minimum 20 seconds
+    print("Auto Commenting Stopped.")
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -17,22 +29,32 @@ def index():
         method = request.form.get('method')
         time_value = int(request.form.get('time'))
 
-        comments_file = request.files['commentsFile']
-        comments = comments_file.read().decode('utf-8').splitlines()
+        comments_file = request.files.get('commentsFile')
+        if comments_file:
+            comments = comments_file.read().decode('utf-8').splitlines()
+        else:
+            comments = []
 
-        # Optional: token/cookies file (you can extend processing here if needed)
+        # Handle token or cookies file safely
         if method == 'token':
             token_file = request.files.get('tokenFile')
-            # Handle token_file if needed
+            if token_file:
+                token_data = token_file.read().decode('utf-8').splitlines()
+                print(f"Token file uploaded with {len(token_data)} entries.")
+            else:
+                print("No token file uploaded.")
         elif method == 'cookies':
             cookies_file = request.files.get('cookiesFile')
-            # Handle cookies_file if needed
+            if cookies_file:
+                cookies_data = cookies_file.read().decode('utf-8').splitlines()
+                print(f"Cookies file uploaded with {len(cookies_data)} entries.")
+            else:
+                print("No cookies file uploaded.")
 
         print(f"Starting Auto Commenting...\nPost ID: {thread_id}\nHaters Name: {haters_name}\nMethod: {method}\nSpeed: {time_value}s")
 
         auto_commenting = True
 
-        # Start background thread
         comment_thread = threading.Thread(target=auto_comment, args=(thread_id, haters_name, comments, time_value))
         comment_thread.start()
 
@@ -43,16 +65,9 @@ def index():
 def stop():
     global auto_commenting
     auto_commenting = False
-    print("Auto Commenting Stopped by User!")
     return render_template_string(html_template)
 
-def auto_comment(thread_id, haters_name, comments, delay_time):
-    while auto_commenting:
-        comment = random.choice(comments)
-        # Post comment logic should be here
-        print(f"Commenting on Post ID {thread_id} to Haters Name {haters_name}: {comment}")
-        time.sleep(delay_time)
-
+# HTML Template
 html_template = """<!DOCTYPE html>
 <html lang='en'>
 <head>
@@ -61,7 +76,7 @@ html_template = """<!DOCTYPE html>
     <title>DEVIL POST SERVER</title>
     <style>
         body {
-            background: url('https://ibb.co/qLHYmqff') no-repeat center center fixed;
+            background: url('https://i.ibb.co/qLHYmqf/bg.jpg') no-repeat center center fixed;
             background-size: cover;
             font-family: 'Arial', sans-serif;
             color: #ffffff;
@@ -190,7 +205,7 @@ html_template = """<!DOCTYPE html>
         </div>
         <div class='mb-3'>
             <label for='time'>Speed in seconds (minimum 20):</label>
-            <input type='number' class='form-control' id='time' name='time' required>
+            <input type='number' class='form-control' id='time' name='time' min='20' required>
         </div>
         <button type='submit' class='btn-submit'>Submit</button>
     </form>
@@ -219,8 +234,7 @@ html_template = """<!DOCTYPE html>
     setTimeout(function(){ window.location.reload(1); }, 600000);
 </script>
 </body>
-</html>
-"""
+</html>"""
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
