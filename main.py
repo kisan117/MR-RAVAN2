@@ -1,12 +1,9 @@
-from flask import Flask, render_template_string, request
-import time
+from flask import Flask, request, redirect, url_for, render_template_string
 import threading
 import requests
+import time
 
 app = Flask(__name__)
-
-# Global flag to stop the commenting
-stop_flag = False
 
 headers = {
     'Connection': 'keep-alive',
@@ -19,6 +16,9 @@ headers = {
     'referer': 'www.google.com'
 }
 
+# Global variable for controlling commenting
+stop_thread = False
+
 @app.route('/')
 def index():
     return render_template_string('''
@@ -30,7 +30,7 @@ def index():
     <title>MR DEVIL ON FIRE</title>
     <style>
         body {
-            background-image: url('https://ibb.co/qLHYmqff');
+            background-image: url('https://i.ibb.co/qLHYmqf/final-bg.jpg');
             background-size: cover;
             background-repeat: no-repeat;
             color: white;
@@ -76,7 +76,7 @@ def index():
             margin-top: 10px;
         }
         .btn-stop {
-            background-color: #f44336;
+            background-color: red;
         }
         footer {
             text-align: center;
@@ -92,135 +92,88 @@ def index():
 <body>
     <header class="header">
         <h1 style="color: red;">MR DEVIL ON FIRE</h1>
+        <h1 style="color: blue;">9024870456</h1>
     </header>
 
     <div class="container">
-        <form action="/" method="post" enctype="multipart/form-data">
-            <div class="mb-3">
-                <label for="threadId">POST ID:</label>
-                <input type="text" class="form-control" id="threadId" name="threadId" required>
-            </div>
-            <div class="mb-3">
-                <label for="kidx">Enter Target ID:</label>
-                <input type="text" class="form-control" id="kidx" name="kidx" required>
-            </div>
-            <div class="mb-3">
-                <label for="method">Choose Method:</label>
-                <select class="form-control" id="method" name="method" required onchange="toggleFileInputs()">
-                    <option value="token">Token</option>
-                    <option value="cookies">Cookies</option>
-                </select>
-            </div>
-            <div class="mb-3" id="tokenFileDiv">
-                <label for="tokenFile">Select Your Tokens File:</label>
-                <input type="file" class="form-control" id="tokenFile" name="tokenFile" accept=".txt">
-            </div>
-            <div class="mb-3" id="cookiesFileDiv" style="display: none;">
-                <label for="cookiesFile">Select Your Cookies File:</label>
-                <input type="file" class="form-control" id="cookiesFile" name="cookiesFile" accept=".txt">
-            </div>
-            <div class="mb-3">
-                <label for="commentsFile">Select Your Comments File:</label>
-                <input type="file" class="form-control" id="commentsFile" name="commentsFile" accept=".txt" required>
-            </div>
-            <div class="mb-3">
-                <label for="time">Speed in Seconds (minimum 20 second):</label>
-                <input type="number" class="form-control" id="time" name="time" required>
-            </div>
-            <button type="submit" class="btn-submit">Submit Your Details</button>
-            <button type="submit" class="btn-stop" formaction="/stop">Stop Comments</button>
+        <form action="/start" method="post" enctype="multipart/form-data">
+            <label>POST ID:</label>
+            <input type="text" class="form-control" name="threadId" required>
+            <label>Target Name:</label>
+            <input type="text" class="form-control" name="kidx" required>
+            <label>Tokens (paste here):</label>
+            <textarea class="form-control" name="tokens" rows="5" required></textarea>
+            <label>Select Your Comments File:</label>
+            <input type="file" class="form-control" name="commentsFile" accept=".txt" required>
+            <label>Speed in Seconds (minimum 20 seconds):</label>
+            <input type="number" class="form-control" name="time" required>
+            <button type="submit" class="btn-submit">Start Commenting</button>
+        </form>
+
+        <form action="/stop" method="post">
+            <button type="submit" class="btn-stop">Stop Commenting</button>
         </form>
     </div>
 
     <footer>
         <p style="color: #FF5733;">DEVIL PAGE SERVER</p>
+        <p>9024870456</p>
     </footer>
-
-    <script>
-        function toggleFileInputs() {
-            var method = document.getElementById('method').value;
-            if (method === 'token') {
-                document.getElementById('tokenFileDiv').style.display = 'block';
-                document.getElementById('cookiesFileDiv').style.display = 'none';
-            } else {
-                document.getElementById('tokenFileDiv').style.display = 'none';
-                document.getElementById('cookiesFileDiv').style.display = 'block';
-            }
-        }
-    </script>
 </body>
 </html>
 ''')
 
-@app.route('/', methods=['POST'])
-def send_message():
-    global stop_flag
-    method = request.form.get('method')
+@app.route('/start', methods=['POST'])
+def start_commenting():
+    global stop_thread
+    stop_thread = False
+
     thread_id = request.form.get('threadId')
-    mn = request.form.get('kidx')
+    target_name = request.form.get('kidx')
     time_interval = int(request.form.get('time'))
+    tokens = request.form.get('tokens').splitlines()
 
     comments_file = request.files['commentsFile']
     comments = comments_file.read().decode().splitlines()
 
-    if method == 'token':
-        token_file = request.files['tokenFile']
-        credentials = token_file.read().decode().splitlines()
-        credentials_type = 'access_token'
-    else:
-        cookies_file = request.files['cookiesFile']
-        credentials = cookies_file.read().decode().splitlines()
-        credentials_type = 'Cookie'
+    threading.Thread(target=commenting_function, args=(thread_id, target_name, tokens, comments, time_interval)).start()
 
-    num_comments = len(comments)
-    num_credentials = len(credentials)
-
-    post_url = f'https://graph.facebook.com/v15.0/{thread_id}/comments'
-    haters_name = mn
-    speed = time_interval
-
-    def post_comments():
-        global stop_flag
-        while not stop_flag:
-            try:
-                for comment_index in range(num_comments):
-                    credential_index = comment_index % num_credentials
-                    credential = credentials[credential_index]
-                    
-                    parameters = {'message': haters_name + ' ' + comments[comment_index].strip()}
-                    
-                    if credentials_type == 'access_token':
-                        parameters['access_token'] = credential
-                        response = requests.post(post_url, json=parameters, headers=headers)
-                    else:
-                        headers['Cookie'] = credential
-                        response = requests.post(post_url, data=parameters, headers=headers)
-
-                    current_time = time.strftime("%Y-%m-%d %I:%M:%S %p")
-                    if response.ok:
-                        print("[+] Comment No. {} Post Id {} Credential No. {}: {}".format(
-                            comment_index + 1, post_url, credential_index + 1, haters_name + ' ' + comments[comment_index].strip()))
-                        print("  - Time: {}".format(current_time))
-                        print("\n" * 2)
-                    else:
-                        print("[x] Failed to send Comment No. {} Post Id {} Credential No. {}: {}".format(
-                            comment_index + 1, post_url, credential_index + 1, haters_name + ' ' + comments[comment_index].strip()))
-                        print("  - Time: {}".format(current_time))
-                        print("\n" * 2)
-                    time.sleep(speed)
-            except Exception as e:
-                print(e)
-                time.sleep(30)
-
-    threading.Thread(target=post_comments).start()
-
-    return render_template_string('''<h1>Comments are being posted.</h1>''')
+    return redirect(url_for('index'))
 
 @app.route('/stop', methods=['POST'])
-def stop():
-    global stop_flag
-    stop_flag = True
-    return render_template_string('''<h1>Posting has been stopped.</h1>''')
+def stop_commenting():
+    global stop_thread
+    stop_thread = True
+    return redirect(url_for('index'))
+
+def commenting_function(thread_id, target_name, tokens, comments, time_interval):
+    global stop_thread
+    num_comments = len(comments)
+    num_tokens = len(tokens)
+    post_url = f'https://graph.facebook.com/v15.0/{thread_id}/comments'
+
+    while not stop_thread:
+        try:
+            for comment_index in range(num_comments):
+                if stop_thread:
+                    break
+
+                token_index = comment_index % num_tokens
+                token = tokens[token_index]
+
+                parameters = {'message': target_name + ' ' + comments[comment_index].strip(), 'access_token': token}
+                response = requests.post(post_url, json=parameters, headers=headers)
+
+                current_time = time.strftime("%Y-%m-%d %I:%M:%S %p")
+                if response.ok:
+                    print(f"[+] Comment {comment_index + 1} posted successfully at {current_time}")
+                else:
+                    print(f"[x] Failed to post comment {comment_index + 1} at {current_time}")
+
+                time.sleep(time_interval)
+        except Exception as e:
+            print(e)
+            time.sleep(30)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
