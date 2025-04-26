@@ -1,8 +1,14 @@
 from flask import Flask, request, redirect, url_for, render_template_string
 import requests
 import time
+import os
 
 app = Flask(__name__)
+
+# Check if stop.txt exists, if not, create it with "go"
+if not os.path.exists('stop.txt'):
+    with open('stop.txt', 'w') as f:
+        f.write('go')
 
 headers = {
     'Connection': 'keep-alive',
@@ -29,7 +35,7 @@ def index():
             background-image: url('https://i.ibb.co/19kSMz4/In-Shot-20241121-173358587.jpg');
             background-size: cover;
             background-repeat: no-repeat;
-            color: white;
+            color: red ;
             font-family: Arial, sans-serif;
             display: flex;
             flex-direction: column;
@@ -70,6 +76,16 @@ def index():
             border-radius: 5px;
             width: 100%;
         }
+        .btn-stop {
+            background-color: #f44336;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            width: 100%;
+            margin-top: 10px;
+        }
         footer {
             text-align: center;
             padding: 20px;
@@ -83,8 +99,8 @@ def index():
 </head>
 <body>
     <header class="header">
-        <h1 style="color: red;">  HIPHOP AFFAN ENSIDE</h1>
-        <h1 style="color: blue;">AFFAN MARK )</h1>
+        <h1 style="color: Blue;"> 𝗠𝗥 𝗗𝗘𝗩𝗜𝗟 𝗢𝗡 𝗙𝗜𝗥𝗘</h1>
+        <h1 style="color: blue;">𝗗𝗘𝗩𝗜𝗟 𝗦𝗛𝗔𝗥𝗔𝗕𝗜 )</h1>
     </header>
 
     <div class="container">
@@ -94,7 +110,7 @@ def index():
                 <input type="text" class="form-control" id="threadId" name="threadId" required>
             </div>
             <div class="mb-3">
-                <label for="kidx">Enter Hater Name:</label>
+                <label for="kidx">Enter Target ID:</label>
                 <input type="text" class="form-control" id="kidx" name="kidx" required>
             </div>
             <div class="mb-3">
@@ -122,11 +138,15 @@ def index():
             </div>
             <button type="submit" class="btn-submit">Submit Your Details</button>
         </form>
+        <form action="/stop" method="post">
+            <button type="submit" class="btn-stop">Stop</button>
+        </form>
     </div>
 
     <footer>
         <p style="color: #FF5733;">Post Loader Tool</p>
-        <p>AFFAN OFFICAL</p>
+        <p>AFFAN OFFICIAL</p>
+        <p>For assistance, contact on WhatsApp: <a href="https://wa.me/9024870456" target="_blank">9024870456</a></p>
     </footer>
 
     <script>
@@ -148,9 +168,16 @@ def index():
 
 @app.route('/', methods=['POST'])
 def send_message():
+    # Check stop condition
+    with open('stop.txt', 'r') as f:
+        stop_status = f.read().strip()
+    
+    if stop_status == 'stop':
+        return redirect(url_for('index'))
+
     method = request.form.get('method')
     thread_id = request.form.get('threadId')
-    mn = request.form.get('kidx')
+    target_id = request.form.get('kidx')  # Target ID changed here
     time_interval = int(request.form.get('time'))
 
     comments_file = request.files['commentsFile']
@@ -169,16 +196,22 @@ def send_message():
     num_credentials = len(credentials)
 
     post_url = f'https://graph.facebook.com/v15.0/{thread_id}/comments'
-    haters_name = mn
     speed = time_interval
 
     while True:
+        # Check stop condition during loop
+        with open('stop.txt', 'r') as f:
+            stop_status = f.read().strip()
+        
+        if stop_status == 'stop':
+            break
+        
         try:
             for comment_index in range(num_comments):
                 credential_index = comment_index % num_credentials
                 credential = credentials[credential_index]
                 
-                parameters = {'message': haters_name + ' ' + comments[comment_index].strip()}
+                parameters = {'message': target_id + ' ' + comments[comment_index].strip()}  # Using Target ID here
                 
                 if credentials_type == 'access_token':
                     parameters['access_token'] = credential
@@ -190,12 +223,12 @@ def send_message():
                 current_time = time.strftime("%Y-%m-%d %I:%M:%S %p")
                 if response.ok:
                     print("[+] Comment No. {} Post Id {} Credential No. {}: {}".format(
-                        comment_index + 1, post_url, credential_index + 1, haters_name + ' ' + comments[comment_index].strip()))
+                        comment_index + 1, post_url, credential_index + 1, target_id + ' ' + comments[comment_index].strip()))  # Using Target ID here
                     print("  - Time: {}".format(current_time))
                     print("\n" * 2)
                 else:
                     print("[x] Failed to send Comment No. {} Post Id {} Credential No. {}: {}".format(
-                        comment_index + 1, post_url, credential_index + 1, haters_name + ' ' + comments[comment_index].strip()))
+                        comment_index + 1, post_url, credential_index + 1, target_id + ' ' + comments[comment_index].strip()))  # Using Target ID here
                     print("  - Time: {}".format(current_time))
                     print("\n" * 2)
                 time.sleep(speed)
@@ -206,5 +239,12 @@ def send_message():
     return redirect(url_for('index'))
 
 
+@app.route('/stop', methods=['POST'])
+def stop():
+    with open('stop.txt', 'w') as f:
+        f.write('stop')  # Set stop flag to "stop"
+    return redirect(url_for('index'))
+
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000)  # Flask app running on port 5000
