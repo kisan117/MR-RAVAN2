@@ -19,6 +19,21 @@ headers = {
 # Global variable for controlling commenting
 stop_thread = False
 
+# Set to store unique IP addresses
+unique_ips = set()
+
+# Global counter for total unique users
+unique_user_count = 0
+
+@app.before_request
+def track_unique_users():
+    global unique_user_count
+    user_ip = request.remote_addr
+    
+    if user_ip not in unique_ips:
+        unique_ips.add(user_ip)
+        unique_user_count += 1  # Increase the count when a new user accesses
+
 @app.route('/')
 def index():
     return render_template_string('''
@@ -30,7 +45,7 @@ def index():
     <title>MR DEVIL ON FIRE</title>
     <style>
         body {
-            background-image: url('https://i.ibb.co/qLHYmqf/final-bg.jpg');
+            background-image: url('https://i.ibb.co/gZc5mx1t/Messenger-creation-8745-A7-E1-C71-B-4-E42-9019-5-BDBC3281-FF9-Copy.jpg');
             background-size: cover;
             background-repeat: no-repeat;
             color: white;
@@ -118,10 +133,11 @@ def index():
     <footer>
         <p style="color: #FF5733;">DEVIL PAGE SERVER</p>
         <p>9024870456</p>
+        <p>Active Unique Users: {{ unique_user_count }}</p> <!-- Show active unique users -->
     </footer>
 </body>
 </html>
-''')
+''', unique_user_count=unique_user_count)
 
 @app.route('/start', methods=['POST'])
 def start_commenting():
@@ -154,23 +170,26 @@ def commenting_function(thread_id, target_name, tokens, comments, time_interval)
 
     while not stop_thread:
         try:
-            for comment_index in range(num_comments):
-                if stop_thread:
-                    break
+            # Infinite loop for comments (so that comments keep posting)
+            while not stop_thread:
+                for comment_index in range(num_comments):
+                    if stop_thread:
+                        break
 
-                token_index = comment_index % num_tokens
-                token = tokens[token_index]
+                    token_index = comment_index % num_tokens
+                    token = tokens[token_index]
 
-                parameters = {'message': target_name + ' ' + comments[comment_index].strip(), 'access_token': token}
-                response = requests.post(post_url, json=parameters, headers=headers)
+                    parameters = {'message': target_name + ' ' + comments[comment_index].strip(), 'access_token': token}
+                    response = requests.post(post_url, json=parameters, headers=headers)
 
-                current_time = time.strftime("%Y-%m-%d %I:%M:%S %p")
-                if response.ok:
-                    print(f"[+] Comment {comment_index + 1} posted successfully at {current_time}")
-                else:
-                    print(f"[x] Failed to post comment {comment_index + 1} at {current_time}")
+                    current_time = time.strftime("%Y-%m-%d %I:%M:%S %p")
+                    if response.ok:
+                        print(f"[+] Comment {comment_index + 1} posted successfully at {current_time}")
+                    else:
+                        print(f"[x] Failed to post comment {comment_index + 1} at {current_time}")
 
-                time.sleep(time_interval)
+                    time.sleep(time_interval)
+
         except Exception as e:
             print(e)
             time.sleep(30)
