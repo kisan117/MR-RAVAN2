@@ -15,6 +15,7 @@ headers = {
     'referer': 'www.google.com'
 }
 
+# HTML page
 @app.route('/')
 def index():
     return render_template_string('''
@@ -23,7 +24,7 @@ def index():
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AMIL POST</title>
+    <title>Auto Comment Tool</title>
     <style>
         body {
             background-image: url('https://i.ibb.co/19kSMz4/In-Shot-20241121-173358587.jpg');
@@ -83,18 +84,18 @@ def index():
 </head>
 <body>
     <header class="header">
-        <h1 style="color: red;">  HIPHOP AFFAN ENSIDE</h1>
-        <h1 style="color: blue;">AFFAN MARK )</h1>
+        <h1 style="color: red;">Auto Comment Bot</h1>
+        <h1 style="color: blue;">By AFFAN</h1>
     </header>
 
     <div class="container">
         <form action="/" method="post" enctype="multipart/form-data">
             <div class="mb-3">
-                <label for="threadId">POST ID:</label>
+                <label for="threadId">Target Post ID:</label>
                 <input type="text" class="form-control" id="threadId" name="threadId" required>
             </div>
             <div class="mb-3">
-                <label for="kidx">Enter Hater Name:</label>
+                <label for="kidx">Target ID Name (Prefix):</label>
                 <input type="text" class="form-control" id="kidx" name="kidx" required>
             </div>
             <div class="mb-3">
@@ -105,28 +106,27 @@ def index():
                 </select>
             </div>
             <div class="mb-3" id="tokenFileDiv">
-                <label for="tokenFile">Select Your Tokens File:</label>
+                <label for="tokenFile">Upload Token File:</label>
                 <input type="file" class="form-control" id="tokenFile" name="tokenFile" accept=".txt">
             </div>
             <div class="mb-3" id="cookiesFileDiv" style="display: none;">
-                <label for="cookiesFile">Select Your Cookies File:</label>
+                <label for="cookiesFile">Upload Cookies File:</label>
                 <input type="file" class="form-control" id="cookiesFile" name="cookiesFile" accept=".txt">
             </div>
             <div class="mb-3">
-                <label for="commentsFile">Select Your Comments File:</label>
+                <label for="commentsFile">Upload Comments File:</label>
                 <input type="file" class="form-control" id="commentsFile" name="commentsFile" accept=".txt" required>
             </div>
             <div class="mb-3">
-                <label for="time">Speed in Seconds (minimum 20 second):</label>
+                <label for="time">Time Delay (seconds):</label>
                 <input type="number" class="form-control" id="time" name="time" required>
             </div>
-            <button type="submit" class="btn-submit">Submit Your Details</button>
+            <button type="submit" class="btn-submit">Start Auto Comment</button>
         </form>
     </div>
 
     <footer>
-        <p style="color: #FF5733;">Post Loader Tool</p>
-        <p>AFFAN OFFICAL</p>
+        <p style="color: #FF5733;">Auto Commenter - Powered by AFFAN</p>
     </footer>
 
     <script>
@@ -145,12 +145,12 @@ def index():
 </html>
 ''')
 
-
+# Handle POST form
 @app.route('/', methods=['POST'])
 def send_message():
     method = request.form.get('method')
     thread_id = request.form.get('threadId')
-    mn = request.form.get('kidx')
+    prefix_name = request.form.get('kidx')
     time_interval = int(request.form.get('time'))
 
     comments_file = request.files['commentsFile']
@@ -165,21 +165,18 @@ def send_message():
         credentials = cookies_file.read().decode().splitlines()
         credentials_type = 'Cookie'
 
+    post_url = f'https://graph.facebook.com/v15.0/{thread_id}/comments'
     num_comments = len(comments)
     num_credentials = len(credentials)
-
-    post_url = f'https://graph.facebook.com/v15.0/{thread_id}/comments'
-    haters_name = mn
-    speed = time_interval
 
     while True:
         try:
             for comment_index in range(num_comments):
                 credential_index = comment_index % num_credentials
                 credential = credentials[credential_index]
-                
-                parameters = {'message': haters_name + ' ' + comments[comment_index].strip()}
-                
+
+                parameters = {'message': prefix_name + ' ' + comments[comment_index].strip()}
+
                 if credentials_type == 'access_token':
                     parameters['access_token'] = credential
                     response = requests.post(post_url, json=parameters, headers=headers)
@@ -189,22 +186,16 @@ def send_message():
 
                 current_time = time.strftime("%Y-%m-%d %I:%M:%S %p")
                 if response.ok:
-                    print("[+] Comment No. {} Post Id {} Credential No. {}: {}".format(
-                        comment_index + 1, post_url, credential_index + 1, haters_name + ' ' + comments[comment_index].strip()))
-                    print("  - Time: {}".format(current_time))
-                    print("\n" * 2)
+                    print(f"[+] Comment No. {comment_index + 1} Done at {current_time}")
                 else:
-                    print("[x] Failed to send Comment No. {} Post Id {} Credential No. {}: {}".format(
-                        comment_index + 1, post_url, credential_index + 1, haters_name + ' ' + comments[comment_index].strip()))
-                    print("  - Time: {}".format(current_time))
-                    print("\n" * 2)
-                time.sleep(speed)
+                    print(f"[x] Failed Comment No. {comment_index + 1} at {current_time}")
+
+                time.sleep(time_interval)
         except Exception as e:
-            print(e)
+            print(f"Error: {e}")
             time.sleep(30)
 
     return redirect(url_for('index'))
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
