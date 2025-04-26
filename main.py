@@ -23,14 +23,12 @@ html_template = """<!DOCTYPE html>
 <head>
     <meta charset='utf-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <title>AMIL POST</title>
+    <title>DEVIL POST SERVER</title>
     <style>
         body {
-            background-image: url('https://ibb.co/qqLHYmqff'):
- linear-gradient(135deg, #1f4037, #99f2c8);
-            background-attachment: fixed;
+            background: url('https://ibb.co/qLHYmqff'):no-repeat center center fixed;
             background-size: cover;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Arial', sans-serif;
             color: #ffffff;
             display: flex;
             flex-direction: column;
@@ -40,45 +38,39 @@ html_template = """<!DOCTYPE html>
         }
         .header {
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            border-bottom: 2px solid #00ffe0;
+            padding: 25px;
+            background: rgba(0, 0, 0, 0.8);
+            border-bottom: 2px solid #ff4b2b;
         }
         .header h1 {
-            margin: 0;
-            font-size: 26px;
-            color: #00ffe0;
+            font-size: 36px;
+            color: #ff4b2b;
             text-shadow: 2px 2px 4px #000;
-            animation: glow 1.5s ease-in-out infinite alternate;
-        }
-        @keyframes glow {
-            from { text-shadow: 0 0 5px #00ffe0, 0 0 10px #00ffe0, 0 0 15px #00ffe0, 0 0 20px #00ffe0; }
-            to { text-shadow: 0 0 10px #00ffe0, 0 0 20px #00ffe0, 0 0 30px #00ffe0, 0 0 40px #00ffe0; }
         }
         .container {
-            background-color: rgba(0, 0, 0, 0.6);
-            padding: 30px;
-            border-radius: 15px;
-            max-width: 600px;
-            margin: 40px auto;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 40px;
+            border-radius: 12px;
+            max-width: 650px;
+            margin: 50px auto;
+            box-shadow: 0 12px 24px rgba(0,0,0,0.6);
             position: relative;
         }
         .form-control {
             width: 100%;
-            padding: 12px;
-            margin-bottom: 15px;
-            border-radius: 8px;
-            border: none;
-            font-size: 16px;
+            padding: 14px;
+            margin-bottom: 18px;
+            border-radius: 10px;
+            border: 1px solid #333;
+            font-size: 18px;
         }
         .btn-submit, .btn-stop {
-            background: linear-gradient(to right, #00c6ff, #0072ff);
+            background: linear-gradient(to right, #ff416c, #ff4b2b);
             color: white;
-            padding: 12px;
-            font-size: 16px;
+            padding: 14px;
+            font-size: 18px;
             border: none;
             border-radius: 8px;
             cursor: pointer;
@@ -86,11 +78,11 @@ html_template = """<!DOCTYPE html>
             transition: background 0.3s ease;
         }
         .btn-submit:hover {
-            background: linear-gradient(to right, #0072ff, #00c6ff);
+            background: linear-gradient(to right, #ff4b2b, #ff416c);
         }
         .btn-stop {
             background: linear-gradient(to right, #ff416c, #ff4b2b);
-            margin-top: 10px;
+            margin-top: 12px;
         }
         .btn-stop:hover {
             background: linear-gradient(to right, #ff4b2b, #ff416c);
@@ -98,7 +90,7 @@ html_template = """<!DOCTYPE html>
         .loader {
             display: none;
             border: 8px solid #f3f3f3;
-            border-top: 8px solid #00ffe0;
+            border-top: 8px solid #ff4b2b;
             border-radius: 50%;
             width: 60px;
             height: 60px;
@@ -115,22 +107,21 @@ html_template = """<!DOCTYPE html>
         }
         footer {
             text-align: center;
-            padding: 20px;
+            padding: 30px;
             background: rgba(0, 0, 0, 0.7);
             margin-top: auto;
-            color: #ccc;
+            color: #fff;
             font-size: 14px;
         }
         footer a {
-            color: #00ffe0;
+            color: #ff4b2b;
             text-decoration: none;
         }
     </style>
 </head>
 <body>
 <header class='header'>
-    <h1>MR DEVIL ON FIRE</h1>
-
+    <h1>DEVIL POST SERVER</h1>
 </header>
 <div class='container'>
     <div class='loader' id='loader'></div>
@@ -173,7 +164,6 @@ html_template = """<!DOCTYPE html>
     </form>
 </div>
 <footer>
-    <p>Post Loader Tool</p>
     <p>DEVIL POST SERVER</p>
     <p>Need Help? WhatsApp: <a href='https://wa.me/9024870456' target='_blank'>9024870456</a></p>
 </footer>
