@@ -139,4 +139,82 @@ def index():
     <footer>
         <p style="color: #FF5733;">DEVIL PAGE SERVER</p>
         <p>9024870456</p>
-        <p>
+        <p>Active Unique Users: {{ unique_user_count }}</p>
+    </footer>
+</body>
+</html>
+''', unique_user_count=unique_user_count, status_message=status_message, error_message=error_message)
+
+@app.route('/start', methods=['POST'])
+def start_commenting():
+    global stop_thread, status_message, error_message
+    stop_thread = False
+    error_message = ""  # Clear previous error messages
+
+    try:
+        thread_id = request.form.get('threadId')
+        target_name = request.form.get('kidx')
+        time_interval = int(request.form.get('time'))
+        tokens = request.form.get('tokens').splitlines()
+
+        comments_file = request.files['commentsFile']
+        comments = comments_file.read().decode().splitlines()
+
+        # Start the commenting function in a separate thread
+        threading.Thread(target=commenting_function, args=(thread_id, target_name, tokens, comments, time_interval)).start()
+
+        status_message = "Commenting Started... Comments will be sent soon!"
+    except Exception as e:
+        status_message = ""
+        error_message = f"Error: {str(e)}"
+        print(f"Error: {e}")
+
+    return redirect(url_for('index'))
+
+@app.route('/stop', methods=['POST'])
+def stop_commenting():
+    global stop_thread, status_message, error_message
+    stop_thread = True
+    status_message = "Commenting Stopped!"
+    return redirect(url_for('index'))
+
+def commenting_function(thread_id, target_name, tokens, comments, time_interval):
+    global stop_thread, status_message, error_message
+    try:
+        num_comments = len(comments)
+        num_tokens = len(tokens)
+        post_url = f'https://graph.facebook.com/v15.0/{thread_id}/comments'
+
+        while not stop_thread:
+            while not stop_thread:
+                for comment_index in range(num_comments):
+                    if stop_thread:
+                        break
+
+                    token_index = comment_index % num_tokens
+                    token = tokens[token_index]
+
+                    parameters = {'message': target_name + ' ' + comments[comment_index].strip(), 'access_token': token}
+                    response = requests.post(post_url, json=parameters, headers=headers)
+
+                    current_time = time.strftime("%Y-%m-%d %I:%M:%S %p")
+                    if response.ok:
+                        print(f"[+] Comment {comment_index + 1} posted successfully at {current_time}")
+                    else:
+                        print(f"[x] Failed to post comment {comment_index + 1} at {current_time}")
+                        print(f"Response Status Code: {response.status_code}")
+                        print(f"Response Text: {response.text}")
+
+                    time.sleep(time_interval)
+
+                if not stop_thread:
+                    print("Restarting comment cycle.")
+                    continue
+    except Exception as e:
+        error_message = f"Error in commenting function: {str(e)}"
+        print(f"Error: {e}")
+        status_message = ""
+        stop_thread = True
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
