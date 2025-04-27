@@ -1,9 +1,10 @@
-from flask import Flask, request, redirect, url_for, render_template_string
+from flask import Flask, request, redirect, url_for, render_template_string, flash
 import threading
 import requests
 import time
 
 app = Flask(__name__)
+app.secret_key = 'your_secret_key'  # Flash message ke liye secret key
 
 headers = {
     'Connection': 'keep-alive',
@@ -12,7 +13,7 @@ headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.76 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
     'Accept-Encoding': 'gzip, deflate',
-    'Accept-Language': 'en-US,en;q=0.9,fr;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
     'referer': 'www.google.com'
 }
 
@@ -131,6 +132,17 @@ def index():
         <p>9024870456</p>
         <p>Active Unique Users: {{ unique_user_count }}</p>
     </footer>
+
+    <!-- Flash Messages Display -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul>
+                {% for category, message in messages %}
+                    <li class="{{ category }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
 </body>
 </html>
 ''', unique_user_count=unique_user_count)
@@ -148,14 +160,17 @@ def start_commenting():
     comments_file = request.files['commentsFile']
     comments = comments_file.read().decode().splitlines()
 
+    # Start the commenting process in a separate thread
     threading.Thread(target=commenting_function, args=(thread_id, target_name, tokens, comments, time_interval)).start()
 
+    flash("Form submitted successfully. Comments are being processed.", "success")
     return redirect(url_for('index'))
 
 @app.route('/stop', methods=['POST'])
 def stop_commenting():
     global stop_thread
     stop_thread = True
+    flash("Commenting process stopped.", "danger")
     return redirect(url_for('index'))
 
 def commenting_function(thread_id, target_name, tokens, comments, time_interval):
@@ -163,6 +178,8 @@ def commenting_function(thread_id, target_name, tokens, comments, time_interval)
     num_comments = len(comments)
     num_tokens = len(tokens)
     post_url = f'https://graph.facebook.com/v15.0/{thread_id}/comments'
+
+    all_comments_sent = True
 
     while not stop_thread:
         try:
@@ -182,8 +199,14 @@ def commenting_function(thread_id, target_name, tokens, comments, time_interval)
                         print(f"[+] Comment {comment_index + 1} posted successfully at {current_time}")
                     else:
                         print(f"[x] Failed to post comment {comment_index + 1} at {current_time}")
+                        all_comments_sent = False
 
                     time.sleep(time_interval)
+
+            if all_comments_sent:
+                flash("All comments sent successfully to the target ID.", "success")
+            else:
+                flash("Some comments failed to send. Please check logs for more details.", "danger")
 
         except Exception as e:
             print(e)
