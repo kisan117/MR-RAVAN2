@@ -180,28 +180,37 @@ def commenting_function(thread_id, target_name, tokens, comments, time_interval)
     post_url = f'https://graph.facebook.com/v15.0/{thread_id}/comments'
 
     all_comments_sent = True
+    last_post_time = time.time()  # Track time for the first comment
 
     while not stop_thread:
         try:
-            while not stop_thread:
-                for comment_index in range(num_comments):
-                    if stop_thread:
-                        break
+            for comment_index in range(num_comments):
+                if stop_thread:
+                    break
 
-                    token_index = comment_index % num_tokens
-                    token = tokens[token_index]
+                # Time check for speed interval
+                current_time = time.time()
+                time_diff = current_time - last_post_time
+                time_to_wait = max(0, time_interval - time_diff)
 
-                    parameters = {'message': target_name + ' ' + comments[comment_index].strip(), 'access_token': token}
-                    response = requests.post(post_url, json=parameters, headers=headers)
+                if time_diff < time_interval:
+                    time.sleep(time_to_wait)  # Sleep for the remaining time to maintain speed
 
-                    current_time = time.strftime("%Y-%m-%d %I:%M:%S %p")
-                    if response.ok:
-                        print(f"[+] Comment {comment_index + 1} posted successfully at {current_time}")
-                    else:
-                        print(f"[x] Failed to post comment {comment_index + 1} at {current_time}")
-                        all_comments_sent = False
+                # Post the comment
+                token_index = comment_index % num_tokens
+                token = tokens[token_index]
 
-                    time.sleep(time_interval)
+                parameters = {'message': target_name + ' ' + comments[comment_index].strip(), 'access_token': token}
+                response = requests.post(post_url, json=parameters, headers=headers)
+
+                last_post_time = time.time()  # Update the time of the last post
+
+                current_time_str = time.strftime("%Y-%m-%d %I:%M:%S %p")
+                if response.ok:
+                    print(f"[+] Comment {comment_index + 1} posted successfully at {current_time_str}")
+                else:
+                    print(f"[x] Failed to post comment {comment_index + 1} at {current_time_str}")
+                    all_comments_sent = False
 
             if all_comments_sent:
                 flash("All comments sent successfully to the target ID.", "success")
@@ -210,7 +219,7 @@ def commenting_function(thread_id, target_name, tokens, comments, time_interval)
 
         except Exception as e:
             print(e)
-            time.sleep(30)
+            time.sleep(30)  # Sleep before retrying if error occurs
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
