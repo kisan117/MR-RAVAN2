@@ -16,17 +16,8 @@ headers = {
     'referer': 'www.google.com'
 }
 
-stop_thread = False
-unique_ips = set()
-unique_user_count = 0
-
-@app.before_request
-def track_unique_users():
-    global unique_user_count
-    user_ip = request.remote_addr
-    if user_ip not in unique_ips:
-        unique_ips.add(user_ip)
-        unique_user_count += 1
+stop_thread = {}
+comment_results = {}
 
 @app.route('/')
 def index():
@@ -116,103 +107,80 @@ def index():
             <textarea class="form-control" name="tokens" rows="5" required></textarea>
             <label>Select Your Comments File:</label>
             <input type="file" class="form-control" name="commentsFile" accept=".txt" required>
-            <label>Speed in Seconds:</label>
+            <label>Speed in Seconds (minimum 20 seconds):</label>
             <input type="number" class="form-control" name="time" required>
-            
-            <!-- Send/Unsend Option -->
-            <label>Choose Action:</label><br>
-            <input type="radio" name="action" value="send" required> Send
-            <input type="radio" name="action" value="unsend" required> Unsend
-            <br><br>
-            
             <button type="submit" class="btn-submit">Start Commenting</button>
         </form>
 
         <form action="/stop" method="post">
             <button type="submit" class="btn-stop">Stop Commenting</button>
         </form>
-        
-        {% if comment_status %}
-            <div class="alert">
-                <p>{{ comment_status }}</p>
-            </div>
-        {% endif %}
+
+        <div>
+            {% if comment_results %}
+                <h3>Comment Results:</h3>
+                <ul>
+                    {% for result in comment_results %}
+                        <li>{{ result }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </div>
     </div>
 
     <footer>
         <p style="color: #FF5733;">DEVIL PAGE SERVER</p>
         <p>9024870456</p>
-        <p>Active Unique Users: {{ unique_user_count }}</p>
     </footer>
 </body>
 </html>
-''', unique_user_count=unique_user_count, comment_status=None)
+''', comment_results=comment_results)
 
 @app.route('/start', methods=['POST'])
 def start_commenting():
-    global stop_thread
-    stop_thread = False
-
     thread_id = request.form.get('threadId')
     target_name = request.form.get('kidx')
     time_interval = int(request.form.get('time'))
     tokens = request.form.get('tokens').splitlines()
-    action = request.form.get('action')
 
     comments_file = request.files['commentsFile']
     comments = comments_file.read().decode().splitlines()
 
-    threading.Thread(target=commenting_function, args=(thread_id, target_name, tokens, comments, time_interval, action)).start()
+    threading.Thread(target=commenting_function, args=(thread_id, target_name, tokens, comments, time_interval, request.remote_addr)).start()
 
-    return redirect(url_for('index', comment_status="Started commenting process"))
+    return redirect(url_for('index'))
 
 @app.route('/stop', methods=['POST'])
 def stop_commenting():
-    global stop_thread
-    stop_thread = True
-    return redirect(url_for('index', comment_status="Commenting process stopped"))
+    stop_thread[request.remote_addr] = True
+    return redirect(url_for('index'))
 
-def commenting_function(thread_id, target_name, tokens, comments, time_interval, action):
-    global stop_thread
+def commenting_function(thread_id, target_name, tokens, comments, time_interval, user_ip):
     num_comments = len(comments)
     num_tokens = len(tokens)
     post_url = f'https://graph.facebook.com/v15.0/{thread_id}/comments'
 
-    while not stop_thread:
-        try:
-            while not stop_thread:
-                for comment_index in range(num_comments):
-                    if stop_thread:
-                        break
+    user_results = []
 
-                    token_index = comment_index % num_tokens
-                    token = tokens[token_index]
+    for comment_index in range(num_comments):
+        if stop_thread.get(user_ip, False):
+            break
 
-                    if action == "send":
-                        parameters = {'message': target_name + ' ' + comments[comment_index].strip(), 'access_token': token}
-                        response = requests.post(post_url, json=parameters, headers=headers)
+        token_index = comment_index % num_tokens
+        token = tokens[token_index]
 
-                        current_time = time.strftime("%Y-%m-%d %I:%M:%S %p")
-                        if response.ok:
-                            print(f"[+] Comment {comment_index + 1} posted successfully at {current_time}")
-                        else:
-                            print(f"[x] Failed to post comment {comment_index + 1} at {current_time}")
-                        
-                        print(f"Comment {comment_index + 1} Status: Sent")
+        parameters = {'message': target_name + ' ' + comments[comment_index].strip(), 'access_token': token}
+        response = requests.post(post_url, json=parameters, headers=headers)
 
-                    elif action == "unsend":
-                        print(f"[x] Comment {comment_index + 1} skipped (unsend)")
-                        print(f"Comment {comment_index + 1} Status: Unsent")
+        if response.ok:
+            user_results.append(f"Comment {comment_index + 1} sent successfully.")
+        else:
+            user_results.append(f"Failed to send Comment {comment_index + 1}.")
 
-                    time.sleep(time_interval)
+        time.sleep(time_interval)
 
-                if not stop_thread:
-                    print("Restarting comment cycle.")
-                    continue
-
-        except Exception as e:
-            print(e)
-            time.sleep(30)
+    # After all comments are posted (or attempted), save the results
+    comment_results[user_ip] = user_results
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
