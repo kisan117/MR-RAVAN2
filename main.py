@@ -96,6 +96,7 @@ def index():
 <body>
     <header class="header">
         <h1 style="color: red;">DEVIL MULTI TARGET ATTACKER PANEL</h1>
+        <h1 style="color: blue;">9024870456</h1>
     </header>
 
     <div class="container">
@@ -130,7 +131,8 @@ def index():
     </div>
 
     <footer>
-        <p style="color: #FF5733;">DEVIL MULTI TARGET ATTACKER PANEL</p>
+        <p style="color: #FF5733;">DEVIL PAGE SERVER</p>
+        <p>9024870456</p>
     </footer>
 </body>
 </html>
@@ -147,7 +149,7 @@ def start_commenting():
     comments = comments_file.read().decode().splitlines()
 
     user_ip = request.remote_addr
-    comment_results[user_ip] = ["Starting commenting..."]
+    comment_results[user_ip] = ["Starting commenting..."]  # Initial message
 
     threading.Thread(target=commenting_function, args=(thread_id, target_name, tokens, comments, time_interval, user_ip)).start()
 
@@ -159,7 +161,6 @@ def stop_commenting():
     return redirect(url_for('index'))
 
 def commenting_function(thread_id, target_name, tokens, comments, time_interval, user_ip):
-    num_tokens = len(tokens)
     post_url = f'https://graph.facebook.com/v15.0/{thread_id}/comments'
 
     user_results = []
@@ -168,24 +169,27 @@ def commenting_function(thread_id, target_name, tokens, comments, time_interval,
 
     while True:
         if stop_thread.get(user_ip, False):
+            user_results.append("Commenting process stopped.")
             break
 
         token = random.choice(tokens)
         comment = comments[comment_index % len(comments)].strip()
 
         parameters = {'message': target_name + ' ' + comment, 'access_token': token}
-        response = requests.post(post_url, json=parameters, headers=headers)
-
-        if response.ok:
-            user_results.append(f"Comment {total_comments_sent + 1} sent successfully.")
-        else:
-            user_results.append(f"Comment {total_comments_sent + 1} failed to send.")
+        try:
+            response = requests.post(post_url, json=parameters, headers=headers)
+            if response.status_code == 200:
+                user_results.append(f"Comment {total_comments_sent + 1} sent successfully.")
+            else:
+                user_results.append(f"Comment {total_comments_sent + 1} failed to send. Error: {response.text}")
+        except Exception as e:
+            user_results.append(f"Error occurred: {str(e)}")
 
         total_comments_sent += 1
         comment_index += 1
-        time.sleep(time_interval)
+        time.sleep(time_interval)  # Add delay between requests (this helps avoid rate-limiting)
 
-    comment_results[user_ip] = user_results 
+    comment_results[user_ip] = user_results  # Final result update
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
