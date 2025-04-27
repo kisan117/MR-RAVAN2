@@ -29,7 +29,7 @@ def index():
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MR DEVIL ON FIRE</title>
+    <title>DEVIL MULTI TARGET ATTACKER PANEL</title>
     <style>
         body {
             background-image: url('https://i.ibb.co/PZdcV89x/f0d66a4682699894c7a6019ac5fb9b82.jpg');
@@ -95,8 +95,7 @@ def index():
 </head>
 <body>
     <header class="header">
-        <h1 style="color: red;">MR DEVIL ON FIRE</h1>
-        <h1 style="color: blue;">9024870456</h1>
+        <h1 style="color: red;">DEVIL MULTI TARGET ATTACKER PANEL</h1>
     </header>
 
     <div class="container">
@@ -131,8 +130,7 @@ def index():
     </div>
 
     <footer>
-        <p style="color: #FF5733;">DEVIL PAGE SERVER</p>
-        <p>9024870456</p>
+        <p style="color: #FF5733;">DEVIL MULTI TARGET ATTACKER PANEL</p>
     </footer>
 </body>
 </html>
@@ -149,7 +147,7 @@ def start_commenting():
     comments = comments_file.read().decode().splitlines()
 
     user_ip = request.remote_addr
-    comment_results[user_ip] = ["टिप्पणी करना शुरू..."]  # प्रारंभिक संदेश
+    comment_results[user_ip] = ["Starting commenting..."]
 
     threading.Thread(target=commenting_function, args=(thread_id, target_name, tokens, comments, time_interval, user_ip)).start()
 
@@ -179,15 +177,15 @@ def commenting_function(thread_id, target_name, tokens, comments, time_interval,
         response = requests.post(post_url, json=parameters, headers=headers)
 
         if response.ok:
-            user_results.append(f"टिप्पणी {total_comments_sent + 1} सफलतापूर्वक भेजी गई।")
+            user_results.append(f"Comment {total_comments_sent + 1} sent successfully.")
         else:
-            user_results.append(f"टिप्पणी {total_comments_sent + 1} भेजने में विफल।")
+            user_results.append(f"Comment {total_comments_sent + 1} failed to send.")
 
         total_comments_sent += 1
         comment_index += 1
         time.sleep(time_interval)
 
-    comment_results[user_ip] = user_results # अंतिम परिणाम
+    comment_results[user_ip] = user_results 
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
