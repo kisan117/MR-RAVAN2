@@ -22,6 +22,7 @@ comment_results = {}
 
 @app.route('/')
 def index():
+    results = comment_results.get(request.remote_addr, [])
     return render_template_string('''
 <!DOCTYPE html>
 <html lang="en">
@@ -118,10 +119,10 @@ def index():
         </form>
 
         <div>
-            {% if comment_results %}
+            {% if results %}
                 <h3>Comment Results:</h3>
                 <ul>
-                    {% for result in comment_results %}
+                    {% for result in results %}
                         <li>{{ result }}</li>
                     {% endfor %}
                 </ul>
@@ -135,7 +136,7 @@ def index():
     </footer>
 </body>
 </html>
-''', comment_results=comment_results)
+''', results=results)
 
 @app.route('/start', methods=['POST'])
 def start_commenting():
@@ -147,14 +148,16 @@ def start_commenting():
     comments_file = request.files['commentsFile']
     comments = comments_file.read().decode().splitlines()
 
-    threading.Thread(target=commenting_function, args=(thread_id, target_name, tokens, comments, time_interval, request.remote_addr)).start()
+    user_ip = request.remote_addr
+    comment_results[user_ip] = ["टिप्पणी करना शुरू..."]  # प्रारंभिक संदेश
+
+    threading.Thread(target=commenting_function, args=(thread_id, target_name, tokens, comments, time_interval, user_ip)).start()
 
     return redirect(url_for('index'))
 
 @app.route('/stop', methods=['POST'])
 def stop_commenting():
     stop_thread[request.remote_addr] = True
-    comment_results[request.remote_addr] = ["Comments Stopped"]
     return redirect(url_for('index'))
 
 def commenting_function(thread_id, target_name, tokens, comments, time_interval, user_ip):
@@ -163,48 +166,28 @@ def commenting_function(thread_id, target_name, tokens, comments, time_interval,
 
     user_results = []
     comment_index = 0
-    total_comments_sent = 0  # Track total number of comments sent
+    total_comments_sent = 0
 
-    while total_comments_sent < 1000:  # Loop till 1000 comments are sent
-        if stop_thread.get(user_ip, False):  # Agar user ne stop kiya ho
+    while True:
+        if stop_thread.get(user_ip, False):
             break
 
-        # Randomly choose a token from the available tokens
-        token = random.choice(tokens)  # Random token from the list
-
-        # Repeat the comments in cycle when file is exhausted
-        comment = comments[comment_index % len(comments)].strip()  # Cycle through the comments
+        token = random.choice(tokens)
+        comment = comments[comment_index % len(comments)].strip()
 
         parameters = {'message': target_name + ' ' + comment, 'access_token': token}
-        
-        retries = 3  # Number of retry attempts
-        success = False
-        
-        # Try sending the comment up to 'retries' times
-        for attempt in range(retries):
-            response = requests.post(post_url, json=parameters, headers=headers)
+        response = requests.post(post_url, json=parameters, headers=headers)
 
-            if response.ok:
-                user_results.append(f"Comment {total_comments_sent + 1} sent successfully.")
-                success = True
-                break
-            else:
-                user_results.append(f"Failed to send Comment {total_comments_sent + 1}, attempt {attempt + 1}.")
+        if response.ok:
+            user_results.append(f"टिप्पणी {total_comments_sent + 1} सफलतापूर्वक भेजी गई।")
+        else:
+            user_results.append(f"टिप्पणी {total_comments_sent + 1} भेजने में विफल।")
 
-            # Wait before retrying
-            time.sleep(time_interval * 2)  # Increase delay between retries
+        total_comments_sent += 1
+        comment_index += 1
+        time.sleep(time_interval)
 
-        if not success:
-            user_results.append(f"Failed to send Comment {total_comments_sent + 1} after {retries} attempts.")
-        
-        total_comments_sent += 1  # Increment total comments sent
-        comment_index += 1  # Move to the next comment, will wrap around due to modulo
-        time.sleep(time_interval)  # Speed ke according delay lagega
-
-    # Jab commenting stop ho jaye, results ko save kar lein
-    if not stop_thread.get(user_ip, False):  # If stop was not triggered
-        user_results.append("All Comments Sent Successfully!")
-    comment_results[user_ip] = user_results
+    comment_results[user_ip] = user_results # अंतिम परिणाम
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
