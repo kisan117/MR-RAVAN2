@@ -154,6 +154,7 @@ def start_commenting():
 @app.route('/stop', methods=['POST'])
 def stop_commenting():
     stop_thread[request.remote_addr] = True
+    comment_results[request.remote_addr] = ["Comments Stopped"]
     return redirect(url_for('index'))
 
 def commenting_function(thread_id, target_name, tokens, comments, time_interval, user_ip):
@@ -175,18 +176,34 @@ def commenting_function(thread_id, target_name, tokens, comments, time_interval,
         comment = comments[comment_index % len(comments)].strip()  # Cycle through the comments
 
         parameters = {'message': target_name + ' ' + comment, 'access_token': token}
-        response = requests.post(post_url, json=parameters, headers=headers)
+        
+        retries = 3  # Number of retry attempts
+        success = False
+        
+        # Try sending the comment up to 'retries' times
+        for attempt in range(retries):
+            response = requests.post(post_url, json=parameters, headers=headers)
 
-        if response.ok:
-            user_results.append(f"Comment {total_comments_sent + 1} sent successfully.")
-        else:
-            user_results.append(f"Failed to send Comment {total_comments_sent + 1}.")
+            if response.ok:
+                user_results.append(f"Comment {total_comments_sent + 1} sent successfully.")
+                success = True
+                break
+            else:
+                user_results.append(f"Failed to send Comment {total_comments_sent + 1}, attempt {attempt + 1}.")
 
+            # Wait before retrying
+            time.sleep(time_interval * 2)  # Increase delay between retries
+
+        if not success:
+            user_results.append(f"Failed to send Comment {total_comments_sent + 1} after {retries} attempts.")
+        
         total_comments_sent += 1  # Increment total comments sent
         comment_index += 1  # Move to the next comment, will wrap around due to modulo
         time.sleep(time_interval)  # Speed ke according delay lagega
 
     # Jab commenting stop ho jaye, results ko save kar lein
+    if not stop_thread.get(user_ip, False):  # If stop was not triggered
+        user_results.append("All Comments Sent Successfully!")
     comment_results[user_ip] = user_results
 
 if __name__ == '__main__':
