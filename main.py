@@ -2,6 +2,7 @@ from flask import Flask, request, redirect, url_for, render_template_string
 import threading
 import requests
 import time
+import random
 
 app = Flask(__name__)
 
@@ -156,30 +157,36 @@ def stop_commenting():
     return redirect(url_for('index'))
 
 def commenting_function(thread_id, target_name, tokens, comments, time_interval, user_ip):
-    num_comments = len(comments)
     num_tokens = len(tokens)
     post_url = f'https://graph.facebook.com/v15.0/{thread_id}/comments'
 
     user_results = []
+    comment_index = 0
+    total_comments_sent = 0  # Track total number of comments sent
 
-    for comment_index in range(num_comments):
-        if stop_thread.get(user_ip, False):
+    while total_comments_sent < 1000:  # Loop till 1000 comments are sent
+        if stop_thread.get(user_ip, False):  # Agar user ne stop kiya ho
             break
 
-        token_index = comment_index % num_tokens
-        token = tokens[token_index]
+        # Randomly choose a token from the available tokens
+        token = random.choice(tokens)  # Random token from the list
 
-        parameters = {'message': target_name + ' ' + comments[comment_index].strip(), 'access_token': token}
+        # Repeat the comments in cycle when file is exhausted
+        comment = comments[comment_index % len(comments)].strip()  # Cycle through the comments
+
+        parameters = {'message': target_name + ' ' + comment, 'access_token': token}
         response = requests.post(post_url, json=parameters, headers=headers)
 
         if response.ok:
-            user_results.append(f"Comment {comment_index + 1} sent successfully.")
+            user_results.append(f"Comment {total_comments_sent + 1} sent successfully.")
         else:
-            user_results.append(f"Failed to send Comment {comment_index + 1}.")
+            user_results.append(f"Failed to send Comment {total_comments_sent + 1}.")
 
-        time.sleep(time_interval)
+        total_comments_sent += 1  # Increment total comments sent
+        comment_index += 1  # Move to the next comment, will wrap around due to modulo
+        time.sleep(time_interval)  # Speed ke according delay lagega
 
-    # After all comments are posted (or attempted), save the results
+    # Jab commenting stop ho jaye, results ko save kar lein
     comment_results[user_ip] = user_results
 
 if __name__ == '__main__':
