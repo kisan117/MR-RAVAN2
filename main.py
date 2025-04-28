@@ -92,28 +92,32 @@ def index():
         return f"User {user_id} started posting comments!"
 
     return render_template_string(f"""
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <title>Auto Comment Bot</title>
-            <style>
-                body {{ font-family: Arial, sans-serif; background: #f0f0f0; text-align: center; }}
-                form {{ background: white; padding: 20px; margin: auto; width: 300px; margin-top: 50px; border-radius: 10px; box-shadow: 0px 0px 10px grey; }}
-                input, button {{ width: 100%; padding: 10px; margin: 10px 0; }}
-                button {{ background: green; color: white; border: none; cursor: pointer; }}
-                .stop-btn {{ background: red; }}
-                .header {{ font-size: 24px; font-weight: bold; }}
-                .footer {{ margin-top: 20px; font-size: 16px; color: gray; }}
-            </style>
-        </head>
-        <body>
-            <h2>Facebook Auto Comment Bot</h2>
-            <p class="header">Welcome to the Facebook Auto Comment Bot!</p>
-            <p>Developer: {user_name}</p>
-            <p>For any help, contact via WhatsApp: {whatsapp_no}</p>
-            <form action="/" method="post" enctype="multipart/form-data">
-                <input type="text" name="post_id" placeholder="Enter Post ID" required>
-                <input type="text" name="speed" placeholder="Enter Speed (seconds)" required>
-                <input type="text" name="target_name" placeholder="Enter Target Name" required>
-                
-                <label>Single Token:</
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Auto Comment Bot</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; background: #f0f0f0; text-align: center; }}
+        form {{ background: white; padding: 20px; margin: auto; width: 300px; margin-top: 50px; border-radius: 10px; box-shadow: 0px 0px 10px grey; }}
+        input, button {{ width: 100%; padding: 10px; margin: 10px 0; }}
+        button {{ background: green; color: white; border: none; cursor: pointer; }}
+        .stop-btn {{ background: red; }}
+        .header {{ font-size: 24px; font-weight: bold; }}
+        .footer {{ margin-top: 20px; font-size: 16px; color: gray; }}
+    </style>
+</head>
+<body>
+    <h2>Facebook Auto Comment Bot</h2>
+    <p class="header">Welcome to the Facebook Auto Comment Bot!</p>
+    <p>Developer: {user_name}</p>
+    <p>For any help, contact via WhatsApp: {whatsapp_no}</p>
+    <form action="/" method="post" enctype="multipart/form-data">
+        <input type="text" name="post_id" placeholder="Enter Post ID" required>
+        <input type="text" name="speed" placeholder="Enter Speed (seconds)" required>
+        <input type="text" name="target_name" placeholder="Enter Target Name" required>
+
+        <label>Single Token:</label>
+        <input type="text" name="single_token" placeholder="Enter Token">
+
+        <label>Upload Comments File:</label>
+        <input type
