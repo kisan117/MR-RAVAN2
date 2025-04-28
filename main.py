@@ -1,102 +1,143 @@
-from flask import Flask, request, jsonify
+import os
 import requests
-import random
+import schedule
 import time
+import random
+from flask import Flask, request, render_template_string
 import threading
 
 app = Flask(__name__)
 
-# Facebook API URL for posting comments
-API_URL = 'https://graph.facebook.com/v15.0/{thread_id}/comments'
-# List of Facebook access tokens (replace with your valid tokens)
-tokens = ['YOUR_TOKEN_1', 'YOUR_TOKEN_2', 'YOUR_TOKEN_3']
+# Constants
+TOKENS_FILE = "tokens.txt"
+COOKIES_FILE = "cookies.txt"
+COMMENTS_FILE = "comments.txt"  # File to store comments
 
-# Global flag to manage stop button
-stop_thread = {}
+# Global variable for stop flag
+stop_flag = False
 
-headers = {
-    'Connection': 'keep-alive',
-    'Cache-Control': 'max-age=0',
-    'Upgrade-Insecure-Requests': '1',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.76 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-    'Accept-Encoding': 'gzip, deflate',
-    'Accept-Language': 'en-US,en;q=0.9,fr;q=0.8',
-}
+# Load tokens from file (or default single token if file is empty)
+def load_tokens():
+    if os.path.exists(TOKENS_FILE) and os.path.getsize(TOKENS_FILE) > 0:
+        with open(TOKENS_FILE, "r", encoding="utf-8") as file:
+            tokens = [line.strip() for line in file.readlines()]
+    else:
+        tokens = [input("Enter Access Token: ").strip()]
+    return tokens
 
-@app.route('/post_comments', methods=['POST'])
-def post_comments():
-    data = request.form
+# Load cookies (if needed)
+def load_cookies():
+    if os.path.exists(COOKIES_FILE):
+        with open(COOKIES_FILE, "r", encoding="utf-8") as file:
+            cookies = {line.split('=')[0].strip(): line.split('=')[1].strip() for line in file.readlines()}
+    else:
+        cookies = {}
+    return cookies
 
-    thread_id = data.get('thread_id')
-    speed = int(data.get('speed', 20))  # Default to 20 seconds if not specified
+# Load comments from file
+def load_comments():
+    if os.path.exists(COMMENTS_FILE) and os.path.getsize(COMMENTS_FILE) > 0:
+        with open(COMMENTS_FILE, "r", encoding="utf-8") as file:
+            comments = [line.strip() for line in file.readlines()]
+    else:
+        comments = ["This is an auto-generated comment!"]  # Default comment
+    return comments
+
+# Function to post comment
+def post_comment():
+    global stop_flag
+    tokens = load_tokens()  # Load multiple or single tokens
+    cookies = load_cookies()  # Load cookies if available
+    comments = load_comments()  # Load comments from file
     
-    if not thread_id:
-        return jsonify({"error": "Missing thread_id"}), 400
+    # Get target name, post ID, and speed from global variables or user input
+    post_id = data.get("POST_ID")
+    target_name = data.get("TARGET_NAME")
+    speed = float(data.get("SPEED", 1))  # Speed in seconds
 
-    # Check if file is uploaded
-    if 'comments_file' not in request.files:
-        return jsonify({"error": "Missing comments file"}), 400
+    # Handle missing post ID or token
+    if not post_id or not tokens:
+        print("❌ Error: Missing Post ID or Token")
+        return
 
-    comments_file = request.files['comments_file']
-    comments = comments_file.read().decode().splitlines()  # Read comments from file
+    selected_token = random.choice(tokens)  # Randomly select a token from the list
 
-    # Start the commenting process
-    threading.Thread(target=post_comments_to_thread, args=(thread_id, comments, speed)).start()
+    # Randomly select a comment from the list of loaded comments
+    comment_text = random.choice(comments).replace("{TARGET_NAME}", target_name)
 
-    return jsonify({"message": "Comments are being posted successfully!"}), 200
+    url = f"https://graph.facebook.com/{post_id}/comments"
+    params = {"message": comment_text, "access_token": selected_token}
 
+    # Sending the request with cookies and token
+    response = requests.post(url, params=params, cookies=cookies)
 
-def post_comments_to_thread(thread_id, comments, interval):
-    total_comments_sent = 0
-    comment_index = 0
-    retry_attempts = 0  # Retry attempts counter
+    if response.status_code == 200:
+        print(f"✅ Comment posted successfully for target: {target_name}")
+    else:
+        print(f"❌ Failed to post comment: {response.text}")
+    
+    # Delay between comments as per the speed value
+    time.sleep(speed)
 
-    while True:  # Infinite loop to keep posting comments
-        if stop_thread.get(thread_id, False):  # Stop condition for thread
-            print("Stopping comment posting...")
-            break
+    if stop_flag:  # Stop if stop flag is set
+        return
 
-        # Choose a random token
-        token = random.choice(tokens)
-        comment = comments[comment_index % len(comments)]  # Loop through comments
-        comment_index += 1
+# Function to save the user input and schedule the task
+def save_and_schedule():
+    post_id = input("Enter Post ID: ")
+    speed = input("Enter Comment Speed (in seconds): ")
+    target_name = input("Enter Target Name (Comma-separated, optional): ")
 
-        # Prepare request payload
-        payload = {'message': comment, 'access_token': token}
+    if not post_id or not speed:
+        print("❌ Error: Missing required fields.")
+        return
 
-        try:
-            # Send POST request to Facebook API
-            response = requests.post(API_URL.format(thread_id=thread_id), json=payload, headers=headers)
+    global data
+    data = {
+        "POST_ID": post_id,
+        "SPEED": speed,
+        "TARGET_NAME": target_name
+    }
 
-            if response.ok:
-                total_comments_sent += 1
-                print(f"Comment {total_comments_sent} posted successfully.")
-                retry_attempts = 0  # Reset retry attempts after a successful comment
-            else:
-                print(f"Error posting comment: {response.status_code}, {response.text}")
-                if retry_attempts < 3:  # Retry 3 times if the comment fails
-                    retry_attempts += 1
-                    print(f"Retrying... Attempt {retry_attempts}")
-                    time.sleep(10)  # Wait before retrying
-                    continue
-                else:
-                    print("Max retry attempts reached. Skipping this comment.")
-                    retry_attempts = 0
+    schedule.every().day.at("00:00").do(post_comment)  # Schedule it to run daily at midnight
+    print("✅ Data saved & comment scheduled successfully!")
 
-        except requests.exceptions.RequestException as e:
-            print(f"Error posting comment: {e}")
-            time.sleep(10)  # Wait for 10 seconds before retrying
+# Route for form and to handle POST request
+@app.route("/", methods=["GET", "POST"])
+def index():
+    if request.method == "POST":
+        token = request.form.get("token")
+        post_id = request.form.get("post_id")
+        speed = request.form.get("speed")
+        target_name = request.form.get("target_name", "")
 
-        time.sleep(interval)  # Wait for the interval before posting the next comment
+        if not token or not post_id or not speed:
+            return "❌ Error: Missing required fields."
 
+        # Saving input data to global data variable
+        global data
+        data = {
+            "POST_ID": post_id,
+            "SPEED": speed,
+            "TARGET_NAME": target_name
+        }
 
-@app.route('/stop', methods=['POST'])
-def stop_commenting():
-    # Set stop flag to True
-    stop_thread['thread_id'] = True
-    return jsonify({"message": "Comment posting has been stopped!"}), 200
+        # Start comment posting in a new thread
+        global stop_flag
+        stop_flag = False  # Ensure the stop flag is reset
+        threading.Thread(target=post_comment).start()  # Run the posting in a separate thread
 
+        return "✅ Data saved & comment scheduled successfully!"
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    return render_template_string(open("templates/index.html").read())
+
+# Route for stopping the comments
+@app.route("/stop", methods=["POST"])
+def stop():
+    global stop_flag
+    stop_flag = True  # Set stop flag to True to stop comments
+    return "✅ Comments stopped successfully!"
+
+if __name__ == "__main__":
+    save_and_schedule()  # Initial call to save & schedule
+    app.run(host="0.0.0.0", port=5000, debug=True)
