@@ -122,23 +122,35 @@ def index():
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Auto Comment Bot</title>
+    <title>MR DEVIL POST SERVER</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #f0f0f0; text-align: center; }
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+
         form {
             background: white;
-            padding: 20px;
+            padding: 15px;
             margin: 30px auto;
             width: 90%;
             max-width: 400px;
             border-radius: 10px;
             box-shadow: 0px 0px 10px grey;
+            box-sizing: border-box;
         }
+
         input, button {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             margin: 10px 0;
+            font-size: 16px;
+            box-sizing: border-box;
         }
+
         button {
             background: green;
             color: white;
@@ -146,23 +158,46 @@ def index():
             cursor: pointer;
             border-radius: 5px;
         }
+
         .stop-btn {
             background: red;
         }
+
         .header {
             font-size: 24px;
             font-weight: bold;
         }
+
         .footer {
             margin-top: 20px;
-            font-size: 16px;
+            font-size: 14px;
             color: gray;
+        }
+
+        /* Mobile-specific adjustments */
+        @media (max-width: 600px) {
+            .header {
+                font-size: 20px;
+            }
+
+            form {
+                padding: 10px;
+            }
+
+            input, button {
+                padding: 10px;
+                font-size: 14px;
+            }
+
+            .footer {
+                font-size: 12px;
+            }
         }
     </style>
 </head>
 <body>
-    <h2>Facebook Auto Comment Bot</h2>
-    <p class="header">Welcome to the Facebook Auto Comment Bot!</p>
+    <h2>MR DEVIL POST SERVER</h2>
+    <p class="header">Welcome to the MR DEVIL POST SERVER!</p>
     <p>Developer: {{ user_name }}</p>
     <p>For any help, contact via WhatsApp: {{ whatsapp_no }}</p>
     <form action="/" method="post" enctype="multipart/form-data">
