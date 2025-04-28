@@ -1,11 +1,18 @@
-from flask import Flask, request, redirect, url_for, render_template_string
-import threading
+from flask import Flask, request, jsonify
 import requests
-import time
 import random
-import asyncio
+import time
+import threading
 
 app = Flask(__name__)
+
+# Facebook API URL for posting comments
+API_URL = 'https://graph.facebook.com/v15.0/{thread_id}/comments'
+# List of Facebook access tokens (replace with your valid tokens)
+tokens = ['YOUR_TOKEN_1', 'YOUR_TOKEN_2', 'YOUR_TOKEN_3']
+
+# Global flag to manage stop button
+stop_thread = {}
 
 headers = {
     'Connection': 'keep-alive',
@@ -15,185 +22,81 @@ headers = {
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
     'Accept-Encoding': 'gzip, deflate',
     'Accept-Language': 'en-US,en;q=0.9,fr;q=0.8',
-    'referer': 'www.google.com'
 }
 
-stop_thread = {}
-comment_results = {}
+@app.route('/post_comments', methods=['POST'])
+def post_comments():
+    data = request.form
 
-@app.route('/')
-def index():
-    return render_template_string('''
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MR DEVIL ON FIRE</title>
-    <style>
-        body {
-            background-image: url('https://i.ibb.co/PZdcV89x/f0d66a4682699894c7a6019ac5fb9b82.jpg');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-            color: white;
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.7);
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 24px;
-        }
-        .container {
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: 20px;
-            border-radius: 10px;
-            max-width: 600px;
-            margin: 40px auto;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-        .form-control {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            border: none;
-        }
-        .btn-submit, .btn-stop {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            cursor: pointer;
-            border-radius: 5px;
-            width: 100%;
-            margin-top: 10px;
-        }
-        .btn-stop {
-            background-color: red;
-        }
-        footer {
-            text-align: center;
-            padding: 20px;
-            background-color: rgba(0, 0, 0, 0.7);
-            margin-top: auto;
-        }
-        footer p {
-            margin: 5px 0;
-        }
-    </style>
-</head>
-<body>
-    <header class="header">
-        <h1 style="color: red;">MR DEVIL ON FIRE</h1>
-        <h1 style="color: blue;">9024870456</h1>
-    </header>
+    thread_id = data.get('thread_id')
+    speed = int(data.get('speed', 20))  # Default to 20 seconds if not specified
+    
+    if not thread_id:
+        return jsonify({"error": "Missing thread_id"}), 400
 
-    <div class="container">
-        <form action="/start" method="post" enctype="multipart/form-data">
-            <label>POST ID:</label>
-            <input type="text" class="form-control" name="threadId" required>
-            <label>Target Name:</label>
-            <input type="text" class="form-control" name="kidx" required>
-            <label>Tokens (paste here):</label>
-            <textarea class="form-control" name="tokens" rows="5" required></textarea>
-            <label>Select Your Comments File:</label>
-            <input type="file" class="form-control" name="commentsFile" accept=".txt" required>
-            <label>Speed in Seconds (minimum 20 seconds):</label>
-            <input type="number" class="form-control" name="time" required>
-            <button type="submit" class="btn-submit">Start Commenting</button>
-        </form>
+    # Check if file is uploaded
+    if 'comments_file' not in request.files:
+        return jsonify({"error": "Missing comments file"}), 400
 
-        <form action="/stop" method="post">
-            <button type="submit" class="btn-stop">Stop Commenting</button>
-        </form>
+    comments_file = request.files['comments_file']
+    comments = comments_file.read().decode().splitlines()  # Read comments from file
 
-        <div>
-            {% if comment_results %}
-                <h3>Comment Results:</h3>
-                <ul>
-                    {% for result in comment_results %}
-                        <li>{{ result }}</li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
-        </div>
-    </div>
+    # Start the commenting process
+    threading.Thread(target=post_comments_to_thread, args=(thread_id, comments, speed)).start()
 
-    <footer>
-        <p style="color: #FF5733;">DEVIL PAGE SERVER</p>
-        <p>9024870456</p>
-    </footer>
-</body>
-</html>
-''', comment_results=comment_results)
+    return jsonify({"message": "Comments are being posted successfully!"}), 200
 
-@app.route('/start', methods=['POST'])
-def start_commenting():
-    thread_id = request.form.get('threadId')
-    target_name = request.form.get('kidx')
-    time_interval = int(request.form.get('time'))
-    tokens = request.form.get('tokens').splitlines()
 
-    comments_file = request.files['commentsFile']
-    comments = comments_file.read().decode().splitlines()
+def post_comments_to_thread(thread_id, comments, interval):
+    total_comments_sent = 0
+    comment_index = 0
+    retry_attempts = 0  # Retry attempts counter
 
-    threading.Thread(target=commenting_function, args=(thread_id, target_name, tokens, comments, time_interval, request.remote_addr)).start()
+    while True:  # Infinite loop to keep posting comments
+        if stop_thread.get(thread_id, False):  # Stop condition for thread
+            print("Stopping comment posting...")
+            break
 
-    return redirect(url_for('index'))
+        # Choose a random token
+        token = random.choice(tokens)
+        comment = comments[comment_index % len(comments)]  # Loop through comments
+        comment_index += 1
+
+        # Prepare request payload
+        payload = {'message': comment, 'access_token': token}
+
+        try:
+            # Send POST request to Facebook API
+            response = requests.post(API_URL.format(thread_id=thread_id), json=payload, headers=headers)
+
+            if response.ok:
+                total_comments_sent += 1
+                print(f"Comment {total_comments_sent} posted successfully.")
+                retry_attempts = 0  # Reset retry attempts after a successful comment
+            else:
+                print(f"Error posting comment: {response.status_code}, {response.text}")
+                if retry_attempts < 3:  # Retry 3 times if the comment fails
+                    retry_attempts += 1
+                    print(f"Retrying... Attempt {retry_attempts}")
+                    time.sleep(10)  # Wait before retrying
+                    continue
+                else:
+                    print("Max retry attempts reached. Skipping this comment.")
+                    retry_attempts = 0
+
+        except requests.exceptions.RequestException as e:
+            print(f"Error posting comment: {e}")
+            time.sleep(10)  # Wait for 10 seconds before retrying
+
+        time.sleep(interval)  # Wait for the interval before posting the next comment
+
 
 @app.route('/stop', methods=['POST'])
 def stop_commenting():
-    stop_thread[request.remote_addr] = True
-    return redirect(url_for('index'))
+    # Set stop flag to True
+    stop_thread['thread_id'] = True
+    return jsonify({"message": "Comment posting has been stopped!"}), 200
 
-def commenting_function(thread_id, target_name, tokens, comments, time_interval, user_ip):
-    num_tokens = len(tokens)
-    post_url = f'https://graph.facebook.com/v15.0/{thread_id}/comments'
-
-    user_results = []
-    comment_index = 0
-    total_comments_sent = 0  # Track total number of comments sent
-
-    async def schedule_comments():
-        while True:  # Loop without any limit, comments will keep sending until stopped
-            if stop_thread.get(user_ip, False):  # Agar user ne stop kiya ho
-                break
-
-            # Randomly choose a token from the available tokens
-            token = random.choice(tokens)  # Random token from the list
-
-            # Repeat the comments in cycle when file is exhausted
-            comment = comments[comment_index % len(comments)].strip()  # Cycle through the comments
-
-            parameters = {'message': target_name + ' ' + comment, 'access_token': token}
-            response = requests.post(post_url, json=parameters, headers=headers)
-
-            if response.ok:
-                user_results.append(f"Comment {total_comments_sent + 1} sent successfully.")
-            else:
-                user_results.append(f"Failed to send Comment {total_comments_sent + 1}.")
-
-            total_comments_sent += 1  # Increment total comments sent
-            comment_index += 1  # Move to the next comment, will wrap around due to modulo
-
-            await asyncio.sleep(time_interval)  # Wait for the specified interval
-
-    loop = asyncio.new_event_loop()  # Create a new event loop
-    loop.run_until_complete(schedule_comments())  # Run the async function
-
-    # Jab commenting stop ho jaye, results ko save kar lein
-    comment_results[user_ip] = user_results
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
