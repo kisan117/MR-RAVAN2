@@ -92,7 +92,7 @@ def index():
         <html lang="en">
         <head>
             <meta charset="UTF-8">
-            <title>Auto Comment Bot</title>
+            <title>MR DEVIL POST SERVER</title>
             <style>
                 body {{ font-family: Arial, sans-serif; background: #f0f0f0; text-align: center; }}
                 form {{ background: white; padding: 20px; margin: auto; width: 300px; margin-top: 50px; border-radius: 10px; box-shadow: 0px 0px 10px grey; }}
