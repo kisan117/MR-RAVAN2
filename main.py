@@ -24,6 +24,22 @@ def read_comments_from_file(uploaded_file):
     comments = uploaded_file.read().decode("utf-8").splitlines()
     comments = [comment.strip() for comment in comments if comment.strip()]
 
+def read_token_from_file():
+    global token
+    try:
+        # Check for any token file (like rishi.txt or tokens.txt)
+        token_files = ['tokens.txt', 'rishi.txt', 'token_file.txt']  # Add more file names if needed
+        for token_file in token_files:
+            if os.path.exists(token_file):
+                with open(token_file, 'r') as file:
+                    token = file.readline().strip()
+                    print(f"Using token from file: {token}")
+                    break  # Exit once we find a valid token
+        if not token:
+            print("No token found in the listed files.")
+    except Exception as e:
+        print(f"Error while reading token from file: {str(e)}")
+
 def post_comment(user_id):
     comment_index = 0
     while True:
@@ -58,7 +74,7 @@ def start_commenting(user_id):
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    global post_id, speed, target_name, token
+    global post_id, speed, target_name
 
     if request.method == "POST":
         user_id = session.get('user_id')
@@ -75,7 +91,17 @@ def index():
         post_id = request.form["post_id"]
         speed = int(request.form["speed"])
         target_name = request.form["target_name"]
-        token = request.form["single_token"]
+
+        # Use the token from the form if provided, else use the token from the file
+        global token
+        token_from_form = request.form.get('single_token')
+        if token_from_form:
+            token = token_from_form
+            print(f"Using token from form: {token}")
+        else:
+            # If no token from form, use the one from the file
+            if not token:
+                read_token_from_file()
 
         if 'comments_file' in request.files:
             uploaded_file = request.files['comments_file']
@@ -87,6 +113,10 @@ def index():
 
         return f"User {user_id} started posting comments!"
 
+    # Read token from the file when the app starts (if no token is already set)
+    if not token:
+        read_token_from_file()
+
     return render_template_string('''
 <!DOCTYPE html>
 <html lang="en">
@@ -95,12 +125,39 @@ def index():
     <title>Auto Comment Bot</title>
     <style>
         body { font-family: Arial, sans-serif; background: #f0f0f0; text-align: center; }
-        form { background: white; padding: 20px; margin: auto; width: 300px; margin-top: 50px; border-radius: 10px; box-shadow: 0px 0px 10px grey; }
-        input, button { width: 100%; padding: 10px; margin: 10px 0; }
-        button { background: green; color: white; border: none; cursor: pointer; }
-        .stop-btn { background: red; }
-        .header { font-size: 24px; font-weight: bold; }
-        .footer { margin-top: 20px; font-size: 16px; color: gray; }
+        form {
+            background: white;
+            padding: 20px;
+            margin: 30px auto;
+            width: 90%;
+            max-width: 400px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px grey;
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        button {
+            background: green;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .stop-btn {
+            background: red;
+        }
+        .header {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 16px;
+            color: gray;
+        }
     </style>
 </head>
 <body>
@@ -113,8 +170,8 @@ def index():
         <input type="text" name="speed" placeholder="Enter Speed (seconds)" required>
         <input type="text" name="target_name" placeholder="Enter Target Name" required>
 
-        <label>Single Token:</label>
-        <input type="text" name="single_token" placeholder="Enter Token">
+        <label>Single Token (Optional):</label>
+        <input type="text" name="single_token" placeholder="Enter Token (Optional)">
 
         <label>Upload Comments File:</label>
         <input type="file" name="comments_file">
@@ -132,4 +189,4 @@ def index():
 
 if __name__ == "__main__":
     port = os.getenv("PORT", 5000)
-    app.run(host="0.0.0.0", port=int(port), debug=True)
+    app.run(host="0.0.0.0", port=int(port), debug=True, threaded=True)
