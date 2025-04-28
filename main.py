@@ -7,9 +7,15 @@ from threading import Thread
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'  # Secret key for session management
 
-# Comments file
-comments_file_path = 'comments.txt'
-comments = []
+# Comments list with default comments if file is not available
+comments = [
+    "Great post!",
+    "Nice work!",
+    "I totally agree with this!",
+    "Amazing content, keep it up!",
+    "This is awesome!"
+]
+
 post_id = None
 speed = None
 target_name = None
@@ -19,11 +25,10 @@ token = None
 user_name = "😈 𝙈𝙀 𝘿𝙀𝙑𝙄𝙇 ᯽ 𝙊𝙉 𝙁𝙄𝙍𝙀 😈"
 whatsapp_no = "9024870456"  # Your WhatsApp number
 
-# Function to read comments from the file
-def read_comments():
+# Function to read comments from an uploaded file
+def read_comments_from_file(uploaded_file):
     global comments
-    with open(comments_file_path, 'r') as file:
-        comments = file.readlines()
+    comments = uploaded_file.read().decode("utf-8").splitlines()  # Read the file content
     comments = [comment.strip() for comment in comments]
 
 # Function to post comment
@@ -66,8 +71,29 @@ def index():
         speed = int(request.form["speed"])
         target_name = request.form["target_name"]
         
-        # Read comments from the file
-        read_comments()
+        # Check if a file is uploaded for comments
+        if 'comments_file' in request.files:
+            uploaded_file = request.files['comments_file']
+            if uploaded_file.filename != '':
+                read_comments_from_file(uploaded_file)
+            else:
+                # If no file is uploaded, use default comments
+                comments = [
+                    "Great post!",
+                    "Nice work!",
+                    "I totally agree with this!",
+                    "Amazing content, keep it up!",
+                    "This is awesome!"
+                ]
+        else:
+            # If no file is uploaded, use default comments
+            comments = [
+                "Great post!",
+                "Nice work!",
+                "I totally agree with this!",
+                "Amazing content, keep it up!",
+                "This is awesome!"
+            ]
 
         # Check if a token is provided or file uploaded
         token = request.form["single_token"] if request.form["single_token"] else None
@@ -92,7 +118,7 @@ def index():
         <html lang="en">
         <head>
             <meta charset="UTF-8">
-            <title>MR DEVIL POST SERVER</title>
+            <title>Auto Comment Bot</title>
             <style>
                 body {{ font-family: Arial, sans-serif; background: #f0f0f0; text-align: center; }}
                 form {{ background: white; padding: 20px; margin: auto; width: 300px; margin-top: 50px; border-radius: 10px; box-shadow: 0px 0px 10px grey; }}
@@ -119,9 +145,6 @@ def index():
                 <label>Or Upload Token File:</label>
                 <input type="file" name="token_file">
                 
-                <label>Upload Cookies File:</label>
-                <input type="file" name="cookies_file">
-
                 <label>Upload Comments File:</label>
                 <input type="file" name="comments_file">
 
