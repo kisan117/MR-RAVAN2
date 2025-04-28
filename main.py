@@ -2,142 +2,106 @@ import os
 import requests
 import schedule
 import time
-import random
 from flask import Flask, request, render_template_string
-import threading
 
 app = Flask(__name__)
 
-# Constants
-TOKENS_FILE = "tokens.txt"
-COOKIES_FILE = "cookies.txt"
-COMMENTS_FILE = "comments.txt"  # File to store comments
+# HTML Template (same as before)
 
-# Global variable for stop flag
-stop_flag = False
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Auto Comment Bot</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f0f0f0; text-align: center; }
+        form { background: white; padding: 20px; margin: auto; width: 300px; margin-top: 50px; border-radius: 10px; box-shadow: 0px 0px 10px grey; }
+        input, button { width: 100%; padding: 10px; margin: 10px 0; }
+        button { background: green; color: white; border: none; cursor: pointer; }
+        .stop-btn { background: red; }
+    </style>
+</head>
+<body>
+    <h2>Facebook Auto Comment Bot</h2>
+    <form action="/" method="post" enctype="multipart/form-data">
+        <input type="text" name="post_id" placeholder="Enter Post ID" required>
+        <input type="text" name="speed" placeholder="Enter Speed (seconds)" required>
+        <input type="text" name="target_name" placeholder="Enter Target Name" required>
+        
+        <label>Single Token:</label>
+        <input type="text" name="single_token" placeholder="Enter Token">
 
-# Load tokens from file (or default single token if file is empty)
-def load_tokens():
-    if os.path.exists(TOKENS_FILE) and os.path.getsize(TOKENS_FILE) > 0:
-        with open(TOKENS_FILE, "r", encoding="utf-8") as file:
-            tokens = [line.strip() for line in file.readlines()]
-    else:
-        tokens = [input("Enter Access Token: ").strip()]
-    return tokens
+        <label>Or Upload Token File:</label>
+        <input type="file" name="token_file">
+        
+        <label>Upload Cookies File:</label>
+        <input type="file" name="cookies_file">
 
-# Load cookies (if needed)
-def load_cookies():
-    if os.path.exists(COOKIES_FILE):
-        with open(COOKIES_FILE, "r", encoding="utf-8") as file:
-            cookies = {line.split('=')[0].strip(): line.split('=')[1].strip() for line in file.readlines()}
-    else:
-        cookies = {}
-    return cookies
+        <label>Upload Comments File:</label>
+        <input type="file" name="comments_file">
 
-# Load comments from file
-def load_comments():
-    if os.path.exists(COMMENTS_FILE) and os.path.getsize(COMMENTS_FILE) > 0:
-        with open(COMMENTS_FILE, "r", encoding="utf-8") as file:
-            comments = [line.strip() for line in file.readlines()]
-    else:
-        comments = ["This is an auto-generated comment!"]  # Default comment
-    return comments
+        <button type="submit" name="action" value="start">Start</button>
+        <button type="submit" name="action" value="stop" class="stop-btn">Stop</button>
+    </form>
+</body>
+</html>
+"""
 
-# Function to post comment
+# Global variables
+token = None
+post_id = None
+speed = None
+target_name = None
+comments = []
+
+# Function to simulate posting a comment
 def post_comment():
-    global stop_flag
-    tokens = load_tokens()  # Load multiple or single tokens
-    cookies = load_cookies()  # Load cookies if available
-    comments = load_comments()  # Load comments from file
-    
-    # Get target name, post ID, and speed from global variables or user input
-    post_id = data.get("POST_ID")
-    target_name = data.get("TARGET_NAME")
-    speed = float(data.get("SPEED", 1))  # Speed in seconds
+    if token and post_id and target_name:
+        comment = f"Hey {target_name}, this is an automated comment!"
+        url = f"https://graph.facebook.com/{post_id}/comments"
+        params = {
+            "message": comment,
+            "access_token": token
+        }
+        response = requests.post(url, params=params)
 
-    # Handle missing post ID or token
-    if not post_id or not tokens:
-        print("❌ Error: Missing Post ID or Token")
-        return
+        if response.status_code == 200:
+            print("✅ Comment posted successfully!")
+        else:
+            print(f"❌ Failed to post comment: {response.text}")
 
-    selected_token = random.choice(tokens)  # Randomly select a token from the list
+def start_commenting():
+    global post_id, speed, target_name, token
+    while True:
+        post_comment()
+        time.sleep(speed)
 
-    # Randomly select a comment from the list of loaded comments
-    comment_text = random.choice(comments).replace("{TARGET_NAME}", target_name)
-
-    url = f"https://graph.facebook.com/{post_id}/comments"
-    params = {"message": comment_text, "access_token": selected_token}
-
-    # Sending the request with cookies and token
-    response = requests.post(url, params=params, cookies=cookies)
-
-    if response.status_code == 200:
-        print(f"✅ Comment posted successfully for target: {target_name}")
-    else:
-        print(f"❌ Failed to post comment: {response.text}")
-    
-    # Delay between comments as per the speed value
-    time.sleep(speed)
-
-    if stop_flag:  # Stop if stop flag is set
-        return
-
-# Function to save the user input and schedule the task
-def save_and_schedule():
-    post_id = input("Enter Post ID: ")
-    speed = input("Enter Comment Speed (in seconds): ")
-    target_name = input("Enter Target Name (Comma-separated, optional): ")
-
-    if not post_id or not speed:
-        print("❌ Error: Missing required fields.")
-        return
-
-    global data
-    data = {
-        "POST_ID": post_id,
-        "SPEED": speed,
-        "TARGET_NAME": target_name
-    }
-
-    schedule.every().day.at("00:00").do(post_comment)  # Schedule it to run daily at midnight
-    print("✅ Data saved & comment scheduled successfully!")
-
-# Route for form and to handle POST request
 @app.route("/", methods=["GET", "POST"])
 def index():
+    global post_id, speed, target_name, token
     if request.method == "POST":
-        token = request.form.get("token")
-        post_id = request.form.get("post_id")
-        speed = request.form.get("speed")
-        target_name = request.form.get("target_name", "")
+        post_id = request.form["post_id"]
+        speed = int(request.form["speed"])
+        target_name = request.form["target_name"]
+        
+        # Check if a token is provided or file uploaded
+        token = request.form["single_token"] if request.form["single_token"] else None
+        
+        if request.form["action"] == "start":
+            # Start the commenting loop with a new thread
+            from threading import Thread
+            thread = Thread(target=start_commenting)
+            thread.start()
+            return "✅ Commenting started!"
+        
+        if request.form["action"] == "stop":
+            # Logic to stop commenting (This could involve terminating the thread or adding a stop flag)
+            return "❌ Commenting stopped!"
 
-        if not token or not post_id or not speed:
-            return "❌ Error: Missing required fields."
+    return render_template_string(HTML_TEMPLATE)
 
-        # Saving input data to global data variable
-        global data
-        data = {
-            "POST_ID": post_id,
-            "SPEED": speed,
-            "TARGET_NAME": target_name
-        }
-
-        # Start comment posting in a new thread
-        global stop_flag
-        stop_flag = False  # Ensure the stop flag is reset
-        threading.Thread(target=post_comment).start()  # Run the posting in a separate thread
-
-        return "✅ Data saved & comment scheduled successfully!"
-
-    return render_template_string(open("templates/index.html").read())
-
-# Route for stopping the comments
-@app.route("/stop", methods=["POST"])
-def stop():
-    global stop_flag
-    stop_flag = True  # Set stop flag to True to stop comments
-    return "✅ Comments stopped successfully!"
-
+# Run Flask app
 if __name__ == "__main__":
-    save_and_schedule()  # Initial call to save & schedule
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    port = os.getenv("PORT", 5000)
+    app.run(host="0.0.0.0", port=int(port), debug=True)
