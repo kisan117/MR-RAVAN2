@@ -1,7 +1,0 @@
-services:
-  - type: web
-    name: devil-multi-target-attacker-panel
-    env: python
-    plan: free
-    buildCommand: pip install Flask requests
-    startCommand: python main.py
